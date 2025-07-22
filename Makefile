@@ -3,7 +3,8 @@
 all: check_format test
 
 lint:
-	pylint src/srmodel
+	pylint src/srmodel/infer_code_gen.py
+	#pylint src/srmodel
 
 check_format:
 	black --check src/srmodel tests

@@ -15,18 +15,20 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 
-def generate_model_cpp(tflite_path, output_dir, namespace, tflite_loc, env, license_header):
+def generate_model_cpp(
+    tflite_path, output_dir, namespace, tflite_loc, env, license_header
+):
     tflite_loc_choice = loc_choices.get(tflite_loc, "MODEL_TFLITE_ATTRIBUTE")
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
 
     # Initialize Jinja2 environment
-    #env = Environment(
+    # env = Environment(
     #    loader=FileSystemLoader(script_dir / "templates"),
     #    trim_blocks=True,
     #    lstrip_blocks=True,
-    #)
+    # )
 
     if not Path(tflite_path).is_file():
         raise Exception(f"{tflite_path} not found")

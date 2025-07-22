@@ -13,9 +13,6 @@ def shell_cmd(cmd):
     except subprocess.CalledProcessError as e:
         print(f"ERROR in command {e}")
         return False, "ERROR"
-    except Exception as e:
-        print(f"ERROR in command {e}")
-        return False, "ERROR"
 
     return True, result.stdout.strip()
 

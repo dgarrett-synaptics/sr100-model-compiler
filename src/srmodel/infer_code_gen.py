@@ -1,4 +1,5 @@
 """Main script to convert LiteRT models to the SR100 format"""
+
 import argparse
 import os
 import sys
@@ -7,7 +8,8 @@ from pathlib import Path
 import datetime
 import glob
 from jinja2 import Environment, FileSystemLoader
-#import platform
+
+# import platform
 from .gen_model_cpp import generate_model_cpp
 from .gen_input_expected_data import generate_input_expected_data
 from .generate_micro_mutable_op_resolver_from_model import (
@@ -32,6 +34,114 @@ def expand_wildcards(file_paths):
             # If no wildcard, add the path as is
             expanded_paths.append(path)
     return expanded_paths
+
+
+def gen_model_script(new_tflite_path, args, env, license_header):
+    """Generate the model script outputs"""
+
+    # Generate model C++ code
+    generate_model_cpp(
+        new_tflite_path,
+        args.output_dir,
+        args.namespace,
+        args.tflite_loc,
+        env,
+        license_header,
+    )
+
+    # Generate micro mutable op resolver code
+    common_path = os.path.dirname(new_tflite_path)
+    if common_path == "":
+        common_path = "."
+    generate_micro_mutable_ops_resolver_header(
+        common_path,
+        [os.path.basename(new_tflite_path)],
+        args.output_dir,
+        args.namespace,
+        license_header,
+    )
+
+    # Open the source file in read mode and the destination file in append mode
+    src_fn = get_platform_path(
+        args.output_dir + "/" + args.namespace + "_micro_mutable_op_resolver.hpp"
+    )
+    dest_fn = get_platform_path(args.output_dir + "/" + args.namespace + ".cc")
+    with (
+        open(src_fn, "r", encoding="utf-8") as source_file,
+        open(dest_fn, "a", encoding="utf-8") as destination_file,
+    ):
+        # Read the content from the source file
+        content = source_file.read()
+        # Append the content to the destination file
+        destination_file.write(content)
+
+    # Generate on the original file
+    generate_micro_mutable_ops_resolver_header(
+        os.path.dirname(os.path.abspath(args.tflite_path)),
+        [os.path.basename(args.tflite_path)],
+        args.output_dir,
+        "orig",
+        license_header,
+    )
+
+    resolver_file = get_platform_path(
+        args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp"
+    )
+    with open(resolver_file, "r", encoding="utf-8") as source_file:
+        content = source_file.read()
+        if "AddSynai" in content:
+            synai_ethosu_op_found = 1
+        elif "AddEthosU" in content:
+            synai_ethosu_op_found = 2
+        else:
+            synai_ethosu_op_found = 0
+
+    # Delete micro mutable op resolver file if it exists
+    micro_mutable_file = get_platform_path(
+        args.output_dir + "/" + args.namespace + "_micro_mutable_op_resolver.hpp"
+    )
+    if os.path.exists(micro_mutable_file):
+        os.remove(micro_mutable_file)
+
+    # Delete micro mutable op resolver file if it exists
+    micro_mutable_file = get_platform_path(
+        args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp"
+    )
+    if os.path.exists(micro_mutable_file):
+        os.remove(micro_mutable_file)
+
+    return synai_ethosu_op_found
+
+
+def gen_inout_script(synai_ethosu_op_found, args, license_header):
+    """Generate the inout script results"""
+
+    # Check if AddSynai or AddEthosU is present in the contents of micro mutable op resolver
+    if synai_ethosu_op_found > 0:
+        if synai_ethosu_op_found == 1:
+            print(
+                "Synai custom op found in the model, skipping expected output generation"
+            )
+        else:
+            print(
+                "EthosU custom op found in the model, skipping expected output generation"
+            )
+    else:
+        if args.input:
+            generate_input_expected_data(
+                args.tflite_path,
+                args.output_dir,
+                args.namespace,
+                license_header,
+                args.input,
+            )
+        else:
+            generate_input_expected_data(
+                args.tflite_path,
+                args.output_dir,
+                args.namespace,
+                license_header,
+            )
 
 
 def process_args():
@@ -98,13 +208,8 @@ def process_args():
     return args
 
 
-def main(args=None):
-    """Main function with input args"""
-
-    if args is None:
-        args = process_args()
-
-    synai_ethosu_op_found = 0
+def setup_input(args):
+    """Process inputs"""
 
     # Expand wildcards in input file paths
     if args.input:
@@ -140,6 +245,18 @@ def main(args=None):
         sys.exit(1)
 
     new_tflite_path = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
+
+    return args, memory_mode, scripts_to_run, new_tflite_path
+
+
+def main(args=None):
+    """Main function with input args"""
+
+    if args is None:
+        args = process_args()
+
+    synai_ethosu_op_found = 0
+    args, memory_mode, scripts_to_run, new_tflite_path = setup_input(args)
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
@@ -194,110 +311,11 @@ def main(args=None):
     # Run the selected scripts
     for script in scripts_to_run:
         if script == "model":
-            # Generate model C++ code
-            generate_model_cpp(
-                new_tflite_path,
-                args.output_dir,
-                args.namespace,
-                args.tflite_loc,
-                env,
-                license_header,
+            synai_ethosu_op_found = gen_model_script(
+                new_tflite_path, args, env, license_header
             )
-
-            # Generate micro mutable op resolver code
-            common_path = os.path.dirname(new_tflite_path)
-            if common_path == "":
-                common_path = "."
-            generate_micro_mutable_ops_resolver_header(
-                common_path,
-                [os.path.basename(new_tflite_path)],
-                args.output_dir,
-                args.namespace,
-                license_header,
-            )
-
-            # Open the source file in read mode and the destination file in append mode
-            src_fn = get_platform_path(
-                args.output_dir
-                + "/"
-                + args.namespace
-                + "_micro_mutable_op_resolver.hpp"
-            )
-            dest_fn = get_platform_path(args.output_dir + "/" + args.namespace + ".cc")
-            with (
-                open(src_fn, "r", encoding="utf-8") as source_file,
-                open(dest_fn, "a", encoding="utf-8") as destination_file,
-            ):
-                # Read the content from the source file
-                content = source_file.read()
-                # Append the content to the destination file
-                destination_file.write(content)
-
-            # Generate on the original file
-            generate_micro_mutable_ops_resolver_header(
-                os.path.dirname(os.path.abspath(args.tflite_path)),
-                [os.path.basename(args.tflite_path)],
-                args.output_dir,
-                "orig",
-                license_header,
-            )
-
-            resolver_file = get_platform_path(
-                args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp"
-            )
-            with open(resolver_file, "r", encoding="utf-8") as source_file:
-                content = source_file.read()
-                if "AddSynai" in content:
-                    synai_ethosu_op_found = 1
-                elif "AddEthosU" in content:
-                    synai_ethosu_op_found = 2
-                else:
-                    synai_ethosu_op_found = 0
-
-            # Delete micro mutable op resolver file if it exists
-            micro_mutable_file = get_platform_path(
-                args.output_dir
-                + "/"
-                + args.namespace
-                + "_micro_mutable_op_resolver.hpp"
-            )
-            if os.path.exists(micro_mutable_file):
-                os.remove(micro_mutable_file)
-
-            # Delete micro mutable op resolver file if it exists
-            micro_mutable_file = get_platform_path(
-                args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp"
-            )
-            if os.path.exists(micro_mutable_file):
-                os.remove(micro_mutable_file)
-
         elif script == "inout":
-            # Check if AddSynai or AddEthosU is present in the contents of micro mutable op resolver
-            if synai_ethosu_op_found > 0:
-                if synai_ethosu_op_found == 1:
-                    print(
-                        "Synai custom op found in the model, skipping expected output generation"
-                    )
-                else:
-                    print(
-                        "EthosU custom op found in the model, skipping expected output generation"
-                    )
-            else:
-                if args.input:
-                    generate_input_expected_data(
-                        args.tflite_path,
-                        args.output_dir,
-                        args.namespace,
-                        license_header,
-                        args.input,
-                    )
-                else:
-                    generate_input_expected_data(
-                        args.tflite_path,
-                        args.output_dir,
-                        args.namespace,
-                        license_header,
-                    )
+            gen_inout_script(synai_ethosu_op_found, args, license_header)
 
 
 def infer_code_gen(**kwargs):
