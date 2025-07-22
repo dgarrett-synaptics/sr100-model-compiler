@@ -6,4 +6,5 @@
 #from .generate_micro_mutable_op_resolver_from_model import generate_micro_mutable_op_resolver_from_model 
 #__all__ = ["import gen_in_out_cpp", "gen_input_expected_data", "gen_model_cpp", "generate_micro_mutable_op_resolver_from_model"]
 from .infer_code_gen import infer_code_gen
-__all__ = ["infer_core_gen"]
+from .utils import shell_cmd
+__all__ = ["infer_core_gen", "shell_cmd"]

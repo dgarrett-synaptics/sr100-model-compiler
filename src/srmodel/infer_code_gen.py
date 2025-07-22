@@ -26,9 +26,25 @@ def expand_wildcards(file_paths):
     return expanded_paths
 
 
+def process_args():
+   # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Wrapper script to run TFLite model generation scripts.')
+    parser.add_argument('-t', '--tflite_path', type=str, help='Path to TFLite model file', required=True)
+    parser.add_argument('-o', '--output_dir', type=str, help='Directory to output generated files', default='.')
+    parser.add_argument('-n', '--namespace', type=str, help='Namespace to use for generated code', default='model')
+    parser.add_argument('-s', '--script', type=str, nargs='+', choices=['model', 'inout'],
+                        help='Choose specific scripts to run, if not provided then run all scripts, separated by spaces')
+    parser.add_argument('-i', '--input', type=str, nargs='+', help='List of input npy/bin files')
+    parser.add_argument('-c', '--compiler', type=str, choices=['vela', 'synai', 'none'], help='Choose target compiler', default='vela')
+    parser.add_argument('-tl', '--tflite_loc', type=int, choices=[1, 2], help="Choose an option (1: SRAM, 2: FLASH)", default=1, required=False)
+    parser.add_argument('-p', '--optimize', type=str, choices=['Performance', 'Size'], help="Choose optimization Type", default='Performance', required=False)
+    args = parser.parse_args()
+    return args
 
-def main(args):
+def main(args=None):
     
+    if args is None:
+        args = process_args()
     
     synai_ethosu_op_found = 0
     
@@ -215,4 +231,4 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--optimize', type=str, choices=['Performance', 'Size'], help="Choose optimization Type", default='Performance', required=False)
     args = parser.parse_args()
 
-    main(args)
+    main()
