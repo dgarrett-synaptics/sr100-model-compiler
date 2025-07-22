@@ -104,8 +104,6 @@ def main(args=None):
     if args.input:
         args.input = expand_wildcards(args.input)
 
-    memory_mode = ""
-
     if args.tflite_loc == 1:
         memory_mode = "--memory-mode=Sram_Only"
     else:
@@ -134,19 +132,10 @@ def main(args=None):
         print("Invalid compiler option")
         exit(1)
 
-    #if platform.system() == "Windows":
-    #    new_tflite_path = (
-    #        os.path.dirname(args.tflite_path) + "\\" + new_tflite_file_name
-    #    )
-    #else:
-    #    new_tflite_path = os.path.dirname(args.tflite_path) + "/" + new_tflite_file_name
     new_tflite_path = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
-
-    #print(f'script_dir = {script_dir} : {args.output_dir}')
-    #print(f'{new_tflite_path}')
 
     # Initialize Jinja2 environment
     env = Environment(
@@ -238,40 +227,13 @@ def main(args=None):
             )
 
             # Open the source file in read mode and the destination file in append mode
-            if platform.system() == "Windows":
-                with (
-                    open(
-                        args.output_dir
-                        + "\\"
-                        + args.namespace
-                        + "_micro_mutable_op_resolver.hpp",
-                        "r",
-                    ) as source_file,
-                    open(
-                        args.output_dir + "\\" + args.namespace + ".cc", "a"
-                    ) as destination_file,
-                ):
-                    # Read the content from the source file
-                    content = source_file.read()
-                    # Append the content to the destination file
-                    destination_file.write(content)
-            else:
-                with (
-                    open(
-                        args.output_dir
-                        + "/"
-                        + args.namespace
-                        + "_micro_mutable_op_resolver.hpp",
-                        "r",
-                    ) as source_file,
-                    open(
-                        args.output_dir + "/" + args.namespace + ".cc", "a"
-                    ) as destination_file,
-                ):
-                    # Read the content from the source file
-                    content = source_file.read()
-                    # Append the content to the destination file
-                    destination_file.write(content)
+            src_fn = get_platform_path(args.output_dir + "/" + args.namespace + "_micro_mutable_op_resolver.hpp")
+            dest_fn = get_platform_path(args.output_dir + "/" + args.namespace + ".cc")
+            with (open(src_fn, "r") as source_file, open(dest_fn, "a") as destination_file):
+                # Read the content from the source file
+                content = source_file.read()
+                # Append the content to the destination file
+                destination_file.write(content)
 
             # Generate on the original file
             generate_micro_mutable_ops_resolver_header(
@@ -284,18 +246,6 @@ def main(args=None):
 
 
             resolver_file = get_platform_path(args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp")
-            #if platform.system() == "Windows":
-            #    with open(
-            #        args.output_dir + "\\" + "orig_micro_mutable_op_resolver.hpp", "r"
-            #    ) as source_file:
-            #        content = source_file.read()
-            #        if "AddSynai" in content:
-            #            synai_ethosu_op_found = 1
-            #        elif "AddEthosU" in content:
-            #            synai_ethosu_op_found = 2
-            #        else:
-            #            synai_ethosu_op_found = 0
-            #else:
             with open(resolver_file, "r") as source_file:
                 content = source_file.read()
                 if "AddSynai" in content:
@@ -306,21 +256,13 @@ def main(args=None):
                     synai_ethosu_op_found = 0
 
             # Delete micro mutable op resolver file if it exists
-            if platform.system() == "Windows":
-                micro_mutable_file = (
-                    args.output_dir
-                    + "\\"
-                    + args.namespace
-                    + "_micro_mutable_op_resolver.hpp"
-                )
-            else:
-                micro_mutable_file = (
+            micro_mutable_file = get_platform_path(
                     args.output_dir
                     + "/"
                     + args.namespace
                     + "_micro_mutable_op_resolver.hpp"
-                )
-            if os.path.exists(micro_mutable_file):
+            )
+            if  os.path.exists(micro_mutable_file):
                 os.remove(micro_mutable_file)
 
             # Delete micro mutable op resolver file if it exists
@@ -377,65 +319,4 @@ def infer_code_gen(**kwargs):
 
 
 if __name__ == "__main__":
-
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(
-        description="Wrapper script to run TFLite model generation scripts."
-    )
-    parser.add_argument(
-        "-t", "--tflite_path", type=str, help="Path to TFLite model file", required=True
-    )
-    parser.add_argument(
-        "-o",
-        "--output_dir",
-        type=str,
-        help="Directory to output generated files",
-        default=".",
-    )
-    parser.add_argument(
-        "-n",
-        "--namespace",
-        type=str,
-        help="Namespace to use for generated code",
-        default="model",
-    )
-    parser.add_argument(
-        "-s",
-        "--script",
-        type=str,
-        nargs="+",
-        choices=["model", "inout"],
-        help="Choose specific scripts to run, if not provided then run all scripts, separated by spaces",
-    )
-    parser.add_argument(
-        "-i", "--input", type=str, nargs="+", help="List of input npy/bin files"
-    )
-    parser.add_argument(
-        "-c",
-        "--compiler",
-        type=str,
-        choices=["vela", "synai", "none"],
-        help="Choose target compiler",
-        default="vela",
-    )
-    parser.add_argument(
-        "-tl",
-        "--tflite_loc",
-        type=int,
-        choices=[1, 2],
-        help="Choose an option (1: SRAM, 2: FLASH)",
-        default=1,
-        required=False,
-    )
-    parser.add_argument(
-        "-p",
-        "--optimize",
-        type=str,
-        choices=["Performance", "Size"],
-        help="Choose optimization Type",
-        default="Performance",
-        required=False,
-    )
-    args = parser.parse_args()
-
     main()
