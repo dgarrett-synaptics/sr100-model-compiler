@@ -4,10 +4,25 @@ version = "0.1.0"
 description = "Shortened SDK model targeting package"
 authors = [{ name = "Dave Garrett", email = "dgarrett@synaptics.com" }]
 readme = "README.md"
-requires-python = ">=3.8"
-dependencies = []
+requires-python = ">=3.10"
+dependencies = [
+    "ethos-u-vela @ git+https://review.mlplatform.org/ml/ethos-u/ethos-u-vela.git@3.7.0",
+    "argparse~=1.4.0",
+    "Jinja2~=2.11.2",
+    "numpy==1.21.3",
+    "tensorflow~=2.10.0",
+    "markupsafe==2.0.1",
+    "mako"
+]
 
-[tools.setuptools.packages.find]
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pylint",
+    "pytest"
+]
+
+[tool.setuptools.packages.find]
 where = ["src"]
 
 [build-system]
