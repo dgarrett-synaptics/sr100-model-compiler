@@ -1,21 +1,25 @@
+"""Main script to convert LiteRT models to the SR100 format"""
 import argparse
 import os
+import sys
 import subprocess
 from pathlib import Path
+import datetime
+import glob
+from jinja2 import Environment, FileSystemLoader
+#import platform
 from .gen_model_cpp import generate_model_cpp
 from .gen_input_expected_data import generate_input_expected_data
 from .generate_micro_mutable_op_resolver_from_model import (
     generate_micro_mutable_ops_resolver_header,
 )
 from .utils import get_platform_path
-from jinja2 import Environment, FileSystemLoader
-import datetime
-import glob
-import platform
 
 
 # Function to expand wildcards in input paths
 def expand_wildcards(file_paths):
+    """expand wildcards"""
+
     expanded_paths = []
     for path in file_paths:
         # Check if the path contains a wildcard
@@ -31,7 +35,8 @@ def expand_wildcards(file_paths):
 
 
 def process_args():
-    # Parse command line arguments
+    """Parse command line arguments"""
+
     parser = argparse.ArgumentParser(
         description="Wrapper script to run TFLite model generation scripts."
     )
@@ -58,7 +63,7 @@ def process_args():
         type=str,
         nargs="+",
         choices=["model", "inout"],
-        help="Choose specific scripts to run, if not provided then run all scripts, separated by spaces",
+        help="Choose specific scripts to run, if not provided then run all scripts",
     )
     parser.add_argument(
         "-i", "--input", type=str, nargs="+", help="List of input npy/bin files"
@@ -94,6 +99,7 @@ def process_args():
 
 
 def main(args=None):
+    """Main function with input args"""
 
     if args is None:
         args = process_args()
@@ -129,8 +135,9 @@ def main(args=None):
     elif args.compiler == "none":
         new_tflite_file_name = os.path.basename(args.tflite_path)
     else:
+        new_tflite_file_name = os.path.basename(args.tflite_path)
         print("Invalid compiler option")
-        exit(1)
+        sys.exit(1)
 
     new_tflite_path = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
 
@@ -151,34 +158,16 @@ def main(args=None):
         year=datetime.datetime.now().year,
     )
 
-    # Get full output dir
-    full_out_dir = os.path.abspath(args.output_dir)
-
     if args.compiler == "vela":
 
         arm_config = get_platform_path("Arm/vela.ini")
 
         # Generate vela optimized model
         print("************ VELA ************")
-        # if platform.system() == "Windows":
-        #    vela_params = [
-        #        "vela",
-        #        "--output-dir",
-        #        #os.path.dirname(args.tflite_path),
-        #        full_out_dir,
-        #        "--accelerator-config=ethos-u55-128",
-        #        "--optimise=" + args.optimize,
-        #        "--config=Arm\\vela.ini",
-        #        memory_mode,
-        #        "--system-config=Ethos_U55_High_End_Embedded",
-        #        args.tflite_path,
-        #    ]
-        # else:
         vela_params = [
             "vela",
             "--output-dir",
             args.output_dir,
-            # os.path.dirname(args.tflite_path),
             "--accelerator-config=ethos-u55-128",
             "--optimise=" + args.optimize,
             f"--config={arm_config}",
@@ -186,7 +175,7 @@ def main(args=None):
             "--system-config=Ethos_U55_High_End_Embedded",
             args.tflite_path,
         ]
-        subprocess.run(vela_params)
+        subprocess.run(vela_params, check=True)
         print("********* END OF VELA *********")
     elif args.compiler == "synai":
         # Generate synai optimized model
@@ -197,7 +186,7 @@ def main(args=None):
             os.path.dirname(args.tflite_path),
             args.tflite_path,
         ]
-        subprocess.run(synai_params)
+        subprocess.run(synai_params, check=True)
         print("******** END OF SYNAI ********")
     else:
         print("******* No Compilation *******")
@@ -211,6 +200,7 @@ def main(args=None):
                 args.output_dir,
                 args.namespace,
                 args.tflite_loc,
+                env,
                 license_header,
             )
 
@@ -235,8 +225,8 @@ def main(args=None):
             )
             dest_fn = get_platform_path(args.output_dir + "/" + args.namespace + ".cc")
             with (
-                open(src_fn, "r") as source_file,
-                open(dest_fn, "a") as destination_file,
+                open(src_fn, "r", encoding="utf-8") as source_file,
+                open(dest_fn, "a", encoding="utf-8") as destination_file,
             ):
                 # Read the content from the source file
                 content = source_file.read()
@@ -255,7 +245,7 @@ def main(args=None):
             resolver_file = get_platform_path(
                 args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp"
             )
-            with open(resolver_file, "r") as source_file:
+            with open(resolver_file, "r", encoding="utf-8") as source_file:
                 content = source_file.read()
                 if "AddSynai" in content:
                     synai_ethosu_op_found = 1
@@ -311,18 +301,19 @@ def main(args=None):
 
 
 def infer_code_gen(**kwargs):
+    """Python entry functions for the call"""
 
-    if not "output_dir" in kwargs:
+    if "output_dir" not in kwargs:
         kwargs["output_dir"] = "."
-    if not "namespace" in kwargs:
+    if "namespace" not in kwargs:
         kwargs["namespace"] = "model"
-    if not "script" in kwargs:
+    if "script" not in kwargs:
         kwargs["script"] = ["model", "input"]
-    if not "compiler" in kwargs:
+    if "compiler" not in kwargs:
         kwargs["compiler"] = "vela"
-    if not "tflite_loc" in kwargs:
+    if "tflite_loc" not in kwargs:
         kwargs["tflite_lock"] = 1
-    if not "optimize" in kwargs:
+    if "optimize" not in kwargs:
         kwargs["optimize"] = "Perforamnce"
 
     args = argparse.Namespace(**kwargs)

@@ -1,3 +1,5 @@
+"""Utilities to help the library"""
+
 import subprocess
 import platform
 
@@ -8,6 +10,9 @@ def shell_cmd(cmd):
     cmd_list = cmd.split(" ")
     try:
         result = subprocess.run(cmd_list, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR in command {e}")
+        return False, "ERROR"
     except Exception as e:
         print(f"ERROR in command {e}")
         return False, "ERROR"
@@ -16,8 +21,8 @@ def shell_cmd(cmd):
 
 
 def get_platform_path(unix_path):
+    """Gets a UNIX style path and converts to Windows format if needed"""
 
     if platform.system() == "Windows":
         return unix_path.replace("/", "\\")
-    else:
-        return unix_path
+    return unix_path

@@ -1,6 +1,6 @@
-.PHONY: lint check_format format tests check all
+.PHONY: lint check_format format test check all
 
-all: check_format tests
+all: check_format test
 
 lint:
 	pylint src/srmodel
@@ -9,7 +9,7 @@ check_format:
 	black --check src/srmodel tests
 
 format:
-	black src/srmodel tests
+	black --line-length 88 src/srmodel tests
 
-tests:
+test:
 	pytest tests
