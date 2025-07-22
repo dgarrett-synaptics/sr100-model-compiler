@@ -7,6 +7,7 @@ from .gen_input_expected_data import generate_input_expected_data
 from .generate_micro_mutable_op_resolver_from_model import (
     generate_micro_mutable_ops_resolver_header,
 )
+from .utils import get_platform_path
 from jinja2 import Environment, FileSystemLoader
 import datetime
 import glob
@@ -133,14 +134,19 @@ def main(args=None):
         print("Invalid compiler option")
         exit(1)
 
-    if platform.system() == "Windows":
-        new_tflite_path = (
-            os.path.dirname(args.tflite_path) + "\\" + new_tflite_file_name
-        )
-    else:
-        new_tflite_path = os.path.dirname(args.tflite_path) + "/" + new_tflite_file_name
+    #if platform.system() == "Windows":
+    #    new_tflite_path = (
+    #        os.path.dirname(args.tflite_path) + "\\" + new_tflite_file_name
+    #    )
+    #else:
+    #    new_tflite_path = os.path.dirname(args.tflite_path) + "/" + new_tflite_file_name
+    new_tflite_path = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
+
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
+
+    #print(f'script_dir = {script_dir} : {args.output_dir}')
+    #print(f'{new_tflite_path}')
 
     # Initialize Jinja2 environment
     env = Environment(
@@ -156,29 +162,37 @@ def main(args=None):
         year=datetime.datetime.now().year,
     )
 
+    # Get full output dir
+    full_out_dir = os.path.abspath(args.output_dir)
+
     if args.compiler == "vela":
+
+        arm_config = get_platform_path("Arm/vela.ini")
+
         # Generate vela optimized model
         print("************ VELA ************")
-        if platform.system() == "Windows":
-            vela_params = [
+        #if platform.system() == "Windows":
+        #    vela_params = [
+        #        "vela",
+        #        "--output-dir",
+        #        #os.path.dirname(args.tflite_path),
+        #        full_out_dir,
+        #        "--accelerator-config=ethos-u55-128",
+        #        "--optimise=" + args.optimize,
+        #        "--config=Arm\\vela.ini",
+        #        memory_mode,
+        #        "--system-config=Ethos_U55_High_End_Embedded",
+        #        args.tflite_path,
+        #    ]
+        #else:
+        vela_params = [
                 "vela",
                 "--output-dir",
-                os.path.dirname(args.tflite_path),
+                args.output_dir,
+                #os.path.dirname(args.tflite_path),
                 "--accelerator-config=ethos-u55-128",
                 "--optimise=" + args.optimize,
-                "--config=Arm\\vela.ini",
-                memory_mode,
-                "--system-config=Ethos_U55_High_End_Embedded",
-                args.tflite_path,
-            ]
-        else:
-            vela_params = [
-                "vela",
-                "--output-dir",
-                os.path.dirname(args.tflite_path),
-                "--accelerator-config=ethos-u55-128",
-                "--optimise=" + args.optimize,
-                "--config=Arm/vela.ini",
+                f"--config={arm_config}",
                 memory_mode,
                 "--system-config=Ethos_U55_High_End_Embedded",
                 args.tflite_path,
@@ -259,36 +273,37 @@ def main(args=None):
                     # Append the content to the destination file
                     destination_file.write(content)
 
+            # Generate on the original file
             generate_micro_mutable_ops_resolver_header(
-                common_path,
+                os.path.dirname(os.path.abspath(args.tflite_path)),
                 [os.path.basename(args.tflite_path)],
                 args.output_dir,
                 "orig",
                 license_header,
             )
 
-            if platform.system() == "Windows":
-                with open(
-                    args.output_dir + "\\" + "orig_micro_mutable_op_resolver.hpp", "r"
-                ) as source_file:
-                    content = source_file.read()
-                    if "AddSynai" in content:
-                        synai_ethosu_op_found = 1
-                    elif "AddEthosU" in content:
-                        synai_ethosu_op_found = 2
-                    else:
-                        synai_ethosu_op_found = 0
-            else:
-                with open(
-                    args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp", "r"
-                ) as source_file:
-                    content = source_file.read()
-                    if "AddSynai" in content:
-                        synai_ethosu_op_found = 1
-                    elif "AddEthosU" in content:
-                        synai_ethosu_op_found = 2
-                    else:
-                        synai_ethosu_op_found = 0
+
+            resolver_file = get_platform_path(args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp")
+            #if platform.system() == "Windows":
+            #    with open(
+            #        args.output_dir + "\\" + "orig_micro_mutable_op_resolver.hpp", "r"
+            #    ) as source_file:
+            #        content = source_file.read()
+            #        if "AddSynai" in content:
+            #            synai_ethosu_op_found = 1
+            #        elif "AddEthosU" in content:
+            #            synai_ethosu_op_found = 2
+            #        else:
+            #            synai_ethosu_op_found = 0
+            #else:
+            with open(resolver_file, "r") as source_file:
+                content = source_file.read()
+                if "AddSynai" in content:
+                    synai_ethosu_op_found = 1
+                elif "AddEthosU" in content:
+                    synai_ethosu_op_found = 2
+                else:
+                    synai_ethosu_op_found = 0
 
             # Delete micro mutable op resolver file if it exists
             if platform.system() == "Windows":
@@ -309,17 +324,7 @@ def main(args=None):
                 os.remove(micro_mutable_file)
 
             # Delete micro mutable op resolver file if it exists
-            if platform.system() == "Windows":
-                micro_mutable_file = (
-                    args.output_dir
-                    + "\\"
-                    + args.namespace
-                    + "_micro_mutable_op_resolver.hpp"
-                )
-            else:
-                micro_mutable_file = (
-                    args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp"
-                )
+            micro_mutable_file = get_platform_path(args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp")
             if os.path.exists(micro_mutable_file):
                 os.remove(micro_mutable_file)
 

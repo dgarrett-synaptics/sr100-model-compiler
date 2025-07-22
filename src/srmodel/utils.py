@@ -1,5 +1,5 @@
 import subprocess
-
+import platform
 
 def shell_cmd(cmd):
     """Run a shell command"""
@@ -12,3 +12,11 @@ def shell_cmd(cmd):
         return False, "ERROR"
 
     return True, result.stdout.strip()
+
+
+def get_platform_path(unix_path):
+
+    if platform.system() == "Windows":
+        return unix_path.replace("/", "\\")
+    else:
+        return unix_path
