@@ -17,10 +17,15 @@ def test_hello_world_sram(tmp_path):
     )
 
     # Check results
-    compare_list = ['hello_world_summary_Ethos_U55_High_End_Embedded.csv', 'hello_world_vela.tflite']
+    compare_list = [
+        "hello_world_summary_Ethos_U55_High_End_Embedded.csv",
+        "hello_world_vela.tflite",
+    ]
     for fn in compare_list:
-        assert filecmp.cmp(f"tests/golden/hello_world_sram/{fn}", f"{out_dir}/{fn}", shallow=False)
+        assert filecmp.cmp(
+            f"tests/golden/hello_world_sram/{fn}", f"{out_dir}/{fn}", shallow=False
+        )
 
     # Check for created files
-    assert os.path.exists(f'{out_dir}/model.cc')
-    assert os.path.exists(f'{out_dir}/model_io.cc')
+    assert os.path.exists(f"{out_dir}/model.cc")
+    assert os.path.exists(f"{out_dir}/model_io.cc")

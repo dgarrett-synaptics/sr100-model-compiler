@@ -160,7 +160,7 @@ def main(args=None):
 
         # Generate vela optimized model
         print("************ VELA ************")
-        #if platform.system() == "Windows":
+        # if platform.system() == "Windows":
         #    vela_params = [
         #        "vela",
         #        "--output-dir",
@@ -173,19 +173,19 @@ def main(args=None):
         #        "--system-config=Ethos_U55_High_End_Embedded",
         #        args.tflite_path,
         #    ]
-        #else:
+        # else:
         vela_params = [
-                "vela",
-                "--output-dir",
-                args.output_dir,
-                #os.path.dirname(args.tflite_path),
-                "--accelerator-config=ethos-u55-128",
-                "--optimise=" + args.optimize,
-                f"--config={arm_config}",
-                memory_mode,
-                "--system-config=Ethos_U55_High_End_Embedded",
-                args.tflite_path,
-            ]
+            "vela",
+            "--output-dir",
+            args.output_dir,
+            # os.path.dirname(args.tflite_path),
+            "--accelerator-config=ethos-u55-128",
+            "--optimise=" + args.optimize,
+            f"--config={arm_config}",
+            memory_mode,
+            "--system-config=Ethos_U55_High_End_Embedded",
+            args.tflite_path,
+        ]
         subprocess.run(vela_params)
         print("********* END OF VELA *********")
     elif args.compiler == "synai":
@@ -227,9 +227,17 @@ def main(args=None):
             )
 
             # Open the source file in read mode and the destination file in append mode
-            src_fn = get_platform_path(args.output_dir + "/" + args.namespace + "_micro_mutable_op_resolver.hpp")
+            src_fn = get_platform_path(
+                args.output_dir
+                + "/"
+                + args.namespace
+                + "_micro_mutable_op_resolver.hpp"
+            )
             dest_fn = get_platform_path(args.output_dir + "/" + args.namespace + ".cc")
-            with (open(src_fn, "r") as source_file, open(dest_fn, "a") as destination_file):
+            with (
+                open(src_fn, "r") as source_file,
+                open(dest_fn, "a") as destination_file,
+            ):
                 # Read the content from the source file
                 content = source_file.read()
                 # Append the content to the destination file
@@ -244,8 +252,9 @@ def main(args=None):
                 license_header,
             )
 
-
-            resolver_file = get_platform_path(args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp")
+            resolver_file = get_platform_path(
+                args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp"
+            )
             with open(resolver_file, "r") as source_file:
                 content = source_file.read()
                 if "AddSynai" in content:
@@ -257,16 +266,18 @@ def main(args=None):
 
             # Delete micro mutable op resolver file if it exists
             micro_mutable_file = get_platform_path(
-                    args.output_dir
-                    + "/"
-                    + args.namespace
-                    + "_micro_mutable_op_resolver.hpp"
+                args.output_dir
+                + "/"
+                + args.namespace
+                + "_micro_mutable_op_resolver.hpp"
             )
-            if  os.path.exists(micro_mutable_file):
+            if os.path.exists(micro_mutable_file):
                 os.remove(micro_mutable_file)
 
             # Delete micro mutable op resolver file if it exists
-            micro_mutable_file = get_platform_path(args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp")
+            micro_mutable_file = get_platform_path(
+                args.output_dir + "/" + "orig_micro_mutable_op_resolver.hpp"
+            )
             if os.path.exists(micro_mutable_file):
                 os.remove(micro_mutable_file)
 

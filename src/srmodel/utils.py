@@ -1,6 +1,7 @@
 import subprocess
 import platform
 
+
 def shell_cmd(cmd):
     """Run a shell command"""
 

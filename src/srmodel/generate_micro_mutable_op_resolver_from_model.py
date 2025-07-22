@@ -43,7 +43,7 @@ def generate_micro_mutable_ops_resolver_header(
         custom_op_found = False
         operators_and_activations = set()
 
-        print(f'Trying to open {model_path}')
+        print(f"Trying to open {model_path}")
         with open(model_path, "rb") as f:
             data_bytes = bytearray(f.read())
 
