@@ -6,19 +6,27 @@ from mako import template
 from pathlib import Path
 import platform
 
-def generate_micro_mutable_ops_resolver_header(common_tflite_path, input_tflite_files, output_dir, namespace, license_header, verify_op_list_against_header=None):
-    TEMPLATE_DIR = os.path.abspath('templates')
-    
+
+def generate_micro_mutable_ops_resolver_header(
+    common_tflite_path,
+    input_tflite_files,
+    output_dir,
+    namespace,
+    license_header,
+    verify_op_list_against_header=None,
+):
+    TEMPLATE_DIR = os.path.abspath("templates")
+
     def parse_string(word):
         """Converts a flatbuffer operator string to a format suitable for Micro
-            Mutable Op Resolver. Example: CONV_2D --> AddConv2D."""
+        Mutable Op Resolver. Example: CONV_2D --> AddConv2D."""
 
         # Edge case for AddDetectionPostprocess().
         # The custom code is TFLite_Detection_PostProcess.
-        word = word.replace('TFLite', '')
+        word = word.replace("TFLite", "")
 
-        word_split = re.split('_|-', word)
-        formated_op_string = ''
+        word_split = re.split("_|-", word)
+        formated_op_string = ""
         for part in word_split:
             if len(part) > 1:
                 if part[0].isalpha():
@@ -27,7 +35,7 @@ def generate_micro_mutable_ops_resolver_header(common_tflite_path, input_tflite_
                     formated_op_string += part.upper()
             else:
                 formated_op_string += part.upper()
-        return 'Add' + formated_op_string
+        return "Add" + formated_op_string
 
     def GetModelOperatorsAndActivation(model_path):
         """Extracts a set of operators from a tflite model."""
@@ -35,43 +43,49 @@ def generate_micro_mutable_ops_resolver_header(common_tflite_path, input_tflite_
         custom_op_found = False
         operators_and_activations = set()
 
-        with open(model_path, 'rb') as f:
+        with open(model_path, "rb") as f:
             data_bytes = bytearray(f.read())
 
         data = visualize.CreateDictFromFlatbuffer(data_bytes)
 
         for op_code in data["operator_codes"]:
-            if op_code['custom_code'] is None:
-                op_code["builtin_code"] = max(op_code["builtin_code"],
-                                            op_code["deprecated_builtin_code"])
+            if op_code["custom_code"] is None:
+                op_code["builtin_code"] = max(
+                    op_code["builtin_code"], op_code["deprecated_builtin_code"]
+                )
             else:
                 custom_op_found = True
                 operators_and_activations.add(
-                visualize.NameListToString(op_code['custom_code']))
+                    visualize.NameListToString(op_code["custom_code"])
+                )
 
         for op_code in data["operator_codes"]:
             # Custom operator already added.
-            if custom_op_found and visualize.BuiltinCodeToName(
-                op_code['builtin_code']) == "CUSTOM":
+            if (
+                custom_op_found
+                and visualize.BuiltinCodeToName(op_code["builtin_code"]) == "CUSTOM"
+            ):
                 continue
 
             operators_and_activations.add(
-                visualize.BuiltinCodeToName(op_code['builtin_code']))
+                visualize.BuiltinCodeToName(op_code["builtin_code"])
+            )
 
         return operators_and_activations
 
-    def GenerateMicroMutableOpsResolverHeaderFile(operators, name_of_model,
-                                                  output_dir, namespace):
+    def GenerateMicroMutableOpsResolverHeaderFile(
+        operators, name_of_model, output_dir, namespace
+    ):
         """Generates Micro Mutable Op Resolver code based on a template."""
 
         number_of_ops = len(operators)
-        outfile = 'micro_mutable_op_resolver.hpp'
+        outfile = "micro_mutable_op_resolver.hpp"
 
         # Get the path to the directory containing this script
         script_dir = Path(__file__).parent
 
         # Construct the relative path to the template file
-        template_file_path = script_dir / 'templates' / (outfile + '.mako')
+        template_file_path = script_dir / "templates" / (outfile + ".mako")
 
         # Generate the resolver file with the template
         build_template = Template(filename=str(template_file_path))
@@ -82,13 +96,13 @@ def generate_micro_mutable_ops_resolver_header(common_tflite_path, input_tflite_
         else:
             output_path = str(output_dir) + "/" + (namespace + "_" + outfile)
 
-        with open(output_path, 'w') as file_obj:
+        with open(output_path, "w") as file_obj:
             key_values_in_template = {
-                'model': name_of_model,
-                'number_of_ops': number_of_ops,
-                'operators': operators,
-                'namespace': namespace,
-                'common_template_header': license_header
+                "model": name_of_model,
+                "number_of_ops": number_of_ops,
+                "operators": operators,
+                "namespace": namespace,
+                "common_template_header": license_header,
             }
             file_obj.write(build_template.render(**key_values_in_template))
 
@@ -105,7 +119,7 @@ def generate_micro_mutable_ops_resolver_header(common_tflite_path, input_tflite_
         """
         # Read the header file and extract supported operations
         supported_op_list = []
-        with open(header, 'r') as f:
+        with open(header, "r") as f:
             for line in f:
                 # Assuming the header file declares operations in the form "TfLiteStatus Add<OpName>(...);"
                 match = re.search(r"TfLiteStatus Add(\w+)\(.*\);", line)
@@ -116,7 +130,9 @@ def generate_micro_mutable_ops_resolver_header(common_tflite_path, input_tflite_
         # Check if all operations in op_list are in supported_op_list
         unsupported_ops = [op for op in op_list if op not in supported_op_list]
         if unsupported_ops:
-            print(f"The following operations are not supported by TFLM: {', '.join(unsupported_ops)}")
+            print(
+                f"The following operations are not supported by TFLM: {', '.join(unsupported_ops)}"
+            )
             return True  # Indicating verification failed due to unsupported operations
 
         return False  # All operations are supported
@@ -142,27 +158,33 @@ def generate_micro_mutable_ops_resolver_header(common_tflite_path, input_tflite_
             return
 
     os.makedirs(output_dir, exist_ok=True)
-    GenerateMicroMutableOpsResolverHeaderFile(final_operator_list, model_name,
-                                            output_dir, namespace)
+    GenerateMicroMutableOpsResolverHeaderFile(
+        final_operator_list, model_name, output_dir, namespace
+    )
+
 
 # Optionally, keep the command-line interface for standalone usage
-if __name__ == '__main__':
+if __name__ == "__main__":
     from absl import app
     from absl import flags
 
     FLAGS = flags.FLAGS
-    flags.DEFINE_string('common_tflite_path', None, 'Common path to tflite files.')
-    flags.DEFINE_list('input_tflite_files', None, 'List of input TFLite files.')
-    flags.DEFINE_string('output_dir', None, 'Directory to output generated files.')
-    flags.DEFINE_string('namespace', None, 'Namespace for the generated code.')
-    flags.DEFINE_string('license_header', None, 'License header')
-    flags.DEFINE_string('verify_op_list_against_header', None, 'Header file to verify the operation list against.')
+    flags.DEFINE_string("common_tflite_path", None, "Common path to tflite files.")
+    flags.DEFINE_list("input_tflite_files", None, "List of input TFLite files.")
+    flags.DEFINE_string("output_dir", None, "Directory to output generated files.")
+    flags.DEFINE_string("namespace", None, "Namespace for the generated code.")
+    flags.DEFINE_string("license_header", None, "License header")
+    flags.DEFINE_string(
+        "verify_op_list_against_header",
+        None,
+        "Header file to verify the operation list against.",
+    )
 
-    flags.mark_flag_as_required('common_tflite_path')
-    flags.mark_flag_as_required('input_tflite_files')
-    flags.mark_flag_as_required('output_dir')
-    flags.mark_flag_as_required('namespace')
-    flags.mark_flag_as_required('license_header')
+    flags.mark_flag_as_required("common_tflite_path")
+    flags.mark_flag_as_required("input_tflite_files")
+    flags.mark_flag_as_required("output_dir")
+    flags.mark_flag_as_required("namespace")
+    flags.mark_flag_as_required("license_header")
 
     def main(argv):
         print("generate_micro_mutable_ops_resolver_header")
@@ -172,7 +194,7 @@ if __name__ == '__main__':
             FLAGS.output_dir,
             FLAGS.namespace,
             FLAGS.license_header,
-            FLAGS.verify_op_list_against_header
+            FLAGS.verify_op_list_against_header,
         )
 
     app.run(main)
