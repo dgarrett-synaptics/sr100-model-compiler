@@ -3,14 +3,14 @@
 all: check_format test
 
 lint:
-	pylint src/srmodel/infer_code_gen.py
-	#pylint src/srmodel
+	pylint src/sr100_model_compiler/sr100_model_compiler.py
+	#pylint src/sr100_model_compiler
 
 check_format:
-	black --check src/srmodel tests
+	black --check src/sr100_model_compiler tests
 
 format:
-	black --line-length 88 src/srmodel tests
+	black --line-length 88 src/sr100_model_compiler tests
 
 test:
 	pytest tests

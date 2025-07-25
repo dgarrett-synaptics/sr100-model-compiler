@@ -1,7 +1,7 @@
 import pytest
 import os
 import filecmp
-from srmodel import shell_cmd
+from sr100_model_compiler import shell_cmd
 
 
 def test_hello_world_sram(tmp_path):
@@ -13,7 +13,7 @@ def test_hello_world_sram(tmp_path):
     print(f"cwd = {cwd}")
 
     success, result = shell_cmd(
-        f"infer_code_gen -t tests/hello_world.tflite --output_dir {out_dir}"
+        f"sr100_model_compiler -t tests/hello_world.tflite --output_dir {out_dir}"
     )
 
     # Check results

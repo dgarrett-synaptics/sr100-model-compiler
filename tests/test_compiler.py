@@ -1,5 +1,5 @@
 import pytest
-from srmodel import shell_cmd
+from sr100_model_compiler import shell_cmd
 
 
 def test_compiler():
