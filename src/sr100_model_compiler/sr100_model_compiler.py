@@ -36,12 +36,12 @@ def expand_wildcards(file_paths):
     return expanded_paths
 
 
-def gen_model_script(new_tflite_path, args, env, license_header):
+def gen_model_script(new_model_file, args, env, license_header):
     """Generate the model script outputs"""
 
     # Generate model C++ code
     generate_model_cpp(
-        new_tflite_path,
+        new_model_file,
         args.output_dir,
         args.namespace,
         args.model_loc,
@@ -50,12 +50,12 @@ def gen_model_script(new_tflite_path, args, env, license_header):
     )
 
     # Generate micro mutable op resolver code
-    common_path = os.path.dirname(new_tflite_path)
+    common_path = os.path.dirname(new_model_file)
     if common_path == "":
         common_path = "."
     generate_micro_mutable_ops_resolver_header(
         common_path,
-        [os.path.basename(new_tflite_path)],
+        [os.path.basename(new_model_file)],
         args.output_dir,
         args.namespace,
         license_header,
@@ -77,8 +77,8 @@ def gen_model_script(new_tflite_path, args, env, license_header):
 
     # Generate on the original file
     generate_micro_mutable_ops_resolver_header(
-        os.path.dirname(os.path.abspath(args.tflite_path)),
-        [os.path.basename(args.tflite_path)],
+        os.path.dirname(os.path.abspath(args.model_file)),
+        [os.path.basename(args.model_file)],
         args.output_dir,
         "orig",
         license_header,
@@ -129,7 +129,7 @@ def gen_inout_script(synai_ethosu_op_found, args, license_header):
     else:
         if args.input:
             generate_input_expected_data(
-                args.tflite_path,
+                args.model_file,
                 args.output_dir,
                 args.namespace,
                 license_header,
@@ -137,7 +137,7 @@ def gen_inout_script(synai_ethosu_op_found, args, license_header):
             )
         else:
             generate_input_expected_data(
-                args.tflite_path,
+                args.model_file,
                 args.output_dir,
                 args.namespace,
                 license_header,
@@ -151,7 +151,7 @@ def process_args():
         description="Wrapper script to run TFLite model generation scripts."
     )
     parser.add_argument(
-        "-t", "--tflite_path", type=str, help="Path to TFLite model file", required=True
+        "-m", "--model-file", type=str, help="Path to TFLite model file", required=True
     )
     parser.add_argument(
         "-o",
@@ -198,11 +198,17 @@ def process_args():
     parser.add_argument(
         "-ac",
         "--arena-cache-size",
-        type=float,
-        help="Sets the model arena cache size",
+        type=int,
+        help="Sets the model arena cache size in bytes",
     )
     parser.add_argument(
         "-v",
+        "--verbose-all",
+        action="store_true",
+        help="Turns on verbose all for the compiler",
+    )
+    parser.add_argument(
+        "-vc",
         "--verbose-cycle-estimate",
         action="store_true",
         help="Turns on verbose cycle estimation",
@@ -242,23 +248,23 @@ def setup_input(args):
     # Check if vela compilation is needed or not
     # If not that means the user is trying to run a non-vela model
     # In that case force the file name to no vela one
-    file_name = os.path.basename(args.tflite_path)
-    args.tflite_path = os.path.abspath(args.tflite_path)
+    file_name = os.path.basename(args.model_file)
+    args.model_file = os.path.abspath(args.model_file)
 
     if args.compiler == "vela":
         new_tflite_file_name = file_name.split(".")[0] + "_vela.tflite"
     elif args.compiler == "synai":
         new_tflite_file_name = file_name.split(".")[0] + "_synai.tflite"
     elif args.compiler == "none":
-        new_tflite_file_name = os.path.basename(args.tflite_path)
+        new_tflite_file_name = os.path.basename(args.model_file)
     else:
-        new_tflite_file_name = os.path.basename(args.tflite_path)
+        new_tflite_file_name = os.path.basename(args.model_file)
         print("Invalid compiler option")
         sys.exit(1)
 
-    new_tflite_path = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
+    new_model_file = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
 
-    return args, memory_mode, scripts_to_run, new_tflite_path
+    return args, memory_mode, scripts_to_run, new_model_file
 
 
 def main(args=None):
@@ -268,7 +274,7 @@ def main(args=None):
         args = process_args()
 
     synai_ethosu_op_found = 0
-    args, memory_mode, scripts_to_run, new_tflite_path = setup_input(args)
+    args, memory_mode, scripts_to_run, new_model_file = setup_input(args)
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
@@ -282,7 +288,7 @@ def main(args=None):
     header_template = env.get_template("header_template.txt")
     license_header = header_template.render(
         script_name=script_dir.name,
-        file_name=Path(args.tflite_path).name,
+        file_name=Path(args.model_file).name,
         gen_time=datetime.datetime.now(),
         year=datetime.datetime.now().year,
     )
@@ -292,7 +298,6 @@ def main(args=None):
         arm_config = get_platform_path("Arm/vela.ini")
 
         # Generate vela optimized model
-        print("************ VELA ************")
         vela_params = [
             "vela",
             "--output-dir",
@@ -302,8 +307,15 @@ def main(args=None):
             f"--config={arm_config}",
             memory_mode,
             "--system-config=Ethos_U55_High_End_Embedded",
-            args.tflite_path,
         ]
+        if args.arena_cache_size:
+            vela_params.append(f"--arena-cache-size={args.arena_cache_size}")
+        # TODO - need later version
+        # if args.verbose_cycle_estimate:
+        #    vela_params.append('--verbose-cycle-estimate')
+        vela_params.append(args.model_file)
+
+        print("************ VELA ************")
         subprocess.run(vela_params, check=True)
         print("********* END OF VELA *********")
     elif args.compiler == "synai":
@@ -312,8 +324,8 @@ def main(args=None):
         synai_params = [
             "synai",
             "--output-dir",
-            os.path.dirname(args.tflite_path),
-            args.tflite_path,
+            os.path.dirname(args.model_file),
+            args.model_file,
         ]
         subprocess.run(synai_params, check=True)
         print("******** END OF SYNAI ********")
@@ -324,7 +336,7 @@ def main(args=None):
     for script in scripts_to_run:
         if script == "model":
             synai_ethosu_op_found = gen_model_script(
-                new_tflite_path, args, env, license_header
+                new_model_file, args, env, license_header
             )
         elif script == "inout":
             gen_inout_script(synai_ethosu_op_found, args, license_header)
