@@ -317,8 +317,7 @@ def main(args=None):
         elif script == "inout":
             gen_inout_script(synai_ethosu_op_found, args, license_header)
 
-
-def infer_code_gen(**kwargs):
+def sr100_model_compiler(**kwargs):
     """Python entry functions for the call"""
 
     if "output_dir" not in kwargs:

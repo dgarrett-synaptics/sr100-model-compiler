@@ -1,8 +1,8 @@
 [project]
-name = "srmodel"
+name = "sr100-model-compiler"
 version = "0.1.0"
 description = "Shortened SDK model targeting package"
-authors = [{ name = "Dave Garrett", email = "dgarrett@synaptics.com" }]
+authors = [{ name = "Synaptics Inc", email = "dgarrett@synaptics.com" }]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -12,7 +12,7 @@ dependencies = [
     "numpy==1.21.3",
     "tensorflow~=2.10.0",
     "markupsafe==2.0.1",
-    "mako"
+    "mako",
 ]
 
 [project.optional-dependencies]
@@ -30,4 +30,4 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-infer_code_gen = "srmodel.infer_code_gen:main"
+sr100_model_compiler = "sr100_model_compiler.sr100_model_compiler:main"
