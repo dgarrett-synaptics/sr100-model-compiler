@@ -148,7 +148,7 @@ def process_args():
     """Parse command line arguments"""
 
     parser = argparse.ArgumentParser(
-        description="Wrapper script to run TFLite model generation scripts."
+        description="Wrapper script to compile a TFLite model onto SR100 devices."
     )
     parser.add_argument(
         "-m", "--model-file", type=str, help="Path to TFLite model file", required=True

@@ -28,53 +28,43 @@ pip install -e .[dev]
 
 # Run the full test sweep
 make all
+# format Python files
+make format
 ```
 
 ### Running the DV Testcases
 
-The instructions run the specific testcases
+```bash
+usage: sr100_model_compiler [-h] -m MODEL_FILE [-o OUTPUT_DIR] [-n NAMESPACE] [-s {model,inout} [{model,inout} ...]] [-i INPUT [INPUT ...]] [-c {vela,synai,none}]
+                            [-ml {sram,flash}] [-ac ARENA_CACHE_SIZE] [-v] [-vc] [-p {Performance,Size}]
 
-```
-# Go to the DV directory in the docker execution
-cd dv
+Wrapper script to compile a TFLite model onto SR100 devices.
 
-# Run the full sweep 
-./test_runner.py
-... 
-
- 806.00ns INFO     cocotb.regression                  **************************************************************************************
-                                                        ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
-                                                        **************************************************************************************
-                                                        ** test_custom_aes.test_aes128    PASS         806.00           0.02      42698.53  **
-                                                        **************************************************************************************
-                                                        ** TESTS=1 PASS=1 FAIL=0 SKIP=0                806.00           0.06      13334.12  **
-                                                        **************************************************************************************
-                                                        
-- :0: Verilog $finish
-INFO: Results file: /home/dgarrett/custom-aes-instructions/dv/sim_build/results.xml
-Ran 1 tests with 0 failures
-----------------------------------------
-TEST PASSED
-----------------------------------------
-
-# Generate GTKwave database (in sim_build/dump.fst)
-./test_runner.py --waves
-```
-### Run Full regression
-
-```
-./scripts/run_regression.sh
+options:
+  -h, --help            show this help message and exit
+  -m MODEL_FILE, --model-file MODEL_FILE
+                        Path to TFLite model file
+  -o OUTPUT_DIR, --output-dir OUTPUT_DIR
+                        Directory to output generated files
+  -n NAMESPACE, --namespace NAMESPACE
+                        Namespace to use for generated code
+  -s {model,inout} [{model,inout} ...], --script {model,inout} [{model,inout} ...]
+                        Choose specific scripts to run, if not provided then run all scripts
+  -i INPUT [INPUT ...], --input INPUT [INPUT ...]
+                        List of input npy/bin files
+  -c {vela,synai,none}, --compiler {vela,synai,none}
+                        Choose target compiler
+  -ml {sram,flash}, --model-loc {sram,flash}
+                        Choose between in-memory SRAM or the model that is loaded from FLASH
+  -ac ARENA_CACHE_SIZE, --arena-cache-size ARENA_CACHE_SIZE
+                        Sets the model arena cache size in bytes
+  -v, --verbose-all     Turns on verbose all for the compiler
+  -vc, --verbose-cycle-estimate
+                        Turns on verbose cycle estimation
+  -p {Performance,Size}, --optimize {Performance,Size}
+                        Choose optimization Type
 ```
 
-### Run formatting an Linting checks
-
-```
-# Run the Python formatting
-./scripts/run_black.sh
-
-# Run the LINT Checks
-./scripts/run_pylint.sh
-```
 
 ### GIT Workflow
 
@@ -103,6 +93,3 @@ git checkout feature_<my_new_feature>
 git merge main
 
 ```
-
-
-## Installed Tools Info
