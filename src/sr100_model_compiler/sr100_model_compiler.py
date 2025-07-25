@@ -44,7 +44,7 @@ def gen_model_script(new_tflite_path, args, env, license_header):
         new_tflite_path,
         args.output_dir,
         args.namespace,
-        args.tflite_loc,
+        args.model_loc,
         env,
         license_header,
     )
@@ -155,7 +155,7 @@ def process_args():
     )
     parser.add_argument(
         "-o",
-        "--output_dir",
+        "--output-dir",
         type=str,
         help="Directory to output generated files",
         default=".",
@@ -187,13 +187,25 @@ def process_args():
         default="vela",
     )
     parser.add_argument(
-        "-tl",
-        "--tflite_loc",
-        type=int,
-        choices=[1, 2],
-        help="Choose an option (1: SRAM, 2: FLASH)",
-        default=1,
+        "-ml",
+        "--model-loc",
+        type=str,
+        choices=["sram", "flash"],
+        help="Choose between in-memory SRAM or the model that is loaded from FLASH",
+        default="sram",
         required=False,
+    )
+    parser.add_argument(
+        "-ac",
+        "--arena-cache-size",
+        type=float,
+        help="Sets the model arena cache size",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose-cycle-estimate",
+        action="store_true",
+        help="Turns on verbose cycle estimation",
     )
     parser.add_argument(
         "-p",
@@ -215,7 +227,7 @@ def setup_input(args):
     if args.input:
         args.input = expand_wildcards(args.input)
 
-    if args.tflite_loc == 1:
+    if args.model_loc == "sram":
         memory_mode = "--memory-mode=Sram_Only"
     else:
         memory_mode = "--memory-mode=Shared_Sram"
@@ -329,8 +341,8 @@ def sr100_model_compiler(**kwargs):
         kwargs["script"] = ["model", "input"]
     if "compiler" not in kwargs:
         kwargs["compiler"] = "vela"
-    if "tflite_loc" not in kwargs:
-        kwargs["tflite_lock"] = 1
+    if "model_loc" not in kwargs:
+        kwargs["model_lock"] = "sram"
     if "optimize" not in kwargs:
         kwargs["optimize"] = "Perforamnce"
 

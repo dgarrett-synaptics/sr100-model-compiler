@@ -13,7 +13,7 @@ def test_hello_world_sram(tmp_path):
     print(f"cwd = {cwd}")
 
     success, result = shell_cmd(
-        f"sr100_model_compiler -t tests/hello_world.tflite --output_dir {out_dir}"
+        f"sr100_model_compiler -t tests/hello_world.tflite --output-dir {out_dir}"
     )
 
     # Check results
