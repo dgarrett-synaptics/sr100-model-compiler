@@ -314,7 +314,7 @@ def main(args=None):
         # if args.verbose_cycle_estimate:
         #    vela_params.append('--verbose-cycle-estimate')
         if args.verbose_all:
-            vela_params.append('--verbose-all')
+            vela_params.append("--verbose-all")
         vela_params.append(args.model_file)
 
         print("************ VELA ************")
@@ -347,18 +347,25 @@ def main(args=None):
 def sr100_model_compiler(**kwargs):
     """Python entry functions for the call"""
 
+    # TODO - should derive defaults from argparse as well
     if "output_dir" not in kwargs:
         kwargs["output_dir"] = "."
     if "namespace" not in kwargs:
         kwargs["namespace"] = "model"
     if "script" not in kwargs:
-        kwargs["script"] = ["model", "input"]
+        kwargs["script"] = ["model", "inout"]
     if "compiler" not in kwargs:
         kwargs["compiler"] = "vela"
     if "model_loc" not in kwargs:
-        kwargs["model_lock"] = "sram"
+        kwargs["model_loc"] = "sram"
     if "optimize" not in kwargs:
-        kwargs["optimize"] = "Perforamnce"
+        kwargs["optimize"] = "Performance"
+    if "input" not in kwargs:
+        kwargs["input"] = []
+    if "arena_cache_size" not in kwargs:
+        kwargs["arena_cache_size"] = None
+    if "verbose_all" not in kwargs:
+        kwargs["verbose_all"] = None
 
     args = argparse.Namespace(**kwargs)
     main(args)

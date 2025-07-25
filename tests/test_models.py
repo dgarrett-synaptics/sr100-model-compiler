@@ -2,6 +2,7 @@ import pytest
 import os
 import filecmp
 from sr100_model_compiler import shell_cmd
+from sr100_model_compiler import sr100_model_compiler
 
 
 def test_hello_world_sram(tmp_path):
@@ -15,6 +16,34 @@ def test_hello_world_sram(tmp_path):
     success, result = shell_cmd(
         f"sr100_model_compiler -m tests/hello_world.tflite --output-dir {out_dir}"
     )
+
+    # Check results
+    compare_list = [
+        "hello_world_summary_Ethos_U55_High_End_Embedded.csv",
+        "hello_world_vela.tflite",
+    ]
+    for fn in compare_list:
+        assert filecmp.cmp(
+            f"tests/golden/hello_world_sram/{fn}", f"{out_dir}/{fn}", shallow=False
+        )
+
+    # Check for created files
+    assert os.path.exists(f"{out_dir}/model.cc")
+    assert os.path.exists(f"{out_dir}/model_io.cc")
+
+
+def test_hello_world_sram_python(tmp_path):
+
+    out_dir = tmp_path / "hello_world_sram_python"  #
+    out_dir.mkdir()  #
+
+    cwd = os.getcwd()
+    print(f"cwd = {cwd}")
+
+    sr100_model_compiler(model_file="tests/hello_world.tflite", output_dir=f"{out_dir}")
+    # success, result = shell_cmd(
+    #    f"sr100_model_compiler -m tests/hello_world.tflite --output-dir {out_dir}"
+    # )
 
     # Check results
     compare_list = [
