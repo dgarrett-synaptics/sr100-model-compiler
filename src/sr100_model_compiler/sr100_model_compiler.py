@@ -313,6 +313,8 @@ def main(args=None):
         # TODO - need later version
         # if args.verbose_cycle_estimate:
         #    vela_params.append('--verbose-cycle-estimate')
+        if args.verbose_all:
+            vela_params.append('--verbose-all')
         vela_params.append(args.model_file)
 
         print("************ VELA ************")
