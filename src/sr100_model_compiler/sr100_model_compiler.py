@@ -187,7 +187,6 @@ def process_args():
         default="vela",
     )
     parser.add_argument(
-        "-ml",
         "--model-loc",
         type=str,
         choices=["sram", "flash"],
@@ -196,7 +195,6 @@ def process_args():
         required=False,
     )
     parser.add_argument(
-        "-ac",
         "--arena-cache-size",
         type=int,
         help="Sets the model arena cache size in bytes",
@@ -208,7 +206,6 @@ def process_args():
         help="Turns on verbose all for the compiler",
     )
     parser.add_argument(
-        "-vc",
         "--verbose-cycle-estimate",
         action="store_true",
         help="Turns on verbose cycle estimation",
@@ -293,6 +290,7 @@ def main(args=None):
         year=datetime.datetime.now().year,
     )
 
+    print(f'memory_mode = {memory_mode}')
     if args.compiler == "vela":
 
         arm_config = get_platform_path("Arm/vela.ini")
