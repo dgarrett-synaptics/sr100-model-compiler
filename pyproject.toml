@@ -1,16 +1,16 @@
 [project]
 name = "sr100-model-compiler"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shortened SDK model targeting package"
 authors = [{ name = "Synaptics Inc", email = "dgarrett@synaptics.com" }]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "ethos-u-vela @ git+https://review.mlplatform.org/ml/ethos-u/ethos-u-vela.git@3.7.0",
+    "ethos-u-vela==4.3.0",
     "argparse~=1.4.0",
     "Jinja2~=2.11.2",
-    "numpy==1.21.3",
-    "tensorflow~=2.10.0",
+    "numpy==1.26.0",
+    "tensorflow~=2.19.0",
     "markupsafe==2.0.1",
     "mako",
 ]
