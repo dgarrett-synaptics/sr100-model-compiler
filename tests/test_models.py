@@ -5,19 +5,18 @@ from sr100_model_compiler import shell_cmd
 from sr100_model_compiler import sr100_model_compiler
 
 
-
 def compare_model_cc(expected_file, out_file):
 
     # Check for files
-    assert os.path.exists(expected_file), f'{expected_file} not found'
-    assert os.path.exists(out_file), f'{out_file} not found'
-    #cwd = os.getcwd()
-    #print(f"compare = {cwd}")
+    assert os.path.exists(expected_file), f"{expected_file} not found"
+    assert os.path.exists(out_file), f"{out_file} not found"
+    # cwd = os.getcwd()
+    # print(f"compare = {cwd}")
 
     # Read all the lines
-    with open(expected_file, 'r') as fp1:
+    with open(expected_file, "r") as fp1:
         fp1_lines = fp1.readlines()
-    with open(out_file, 'r') as fp2:
+    with open(out_file, "r") as fp2:
         fp2_lines = fp2.readlines()
 
     # First check length of files
@@ -25,9 +24,12 @@ def compare_model_cc(expected_file, out_file):
 
     for loop1, line in enumerate(fp2_lines):
 
-        if 'Generated' in line or 'Data' in line:
+        if "Generated" in line or "Data" in line:
             next
-        assert line == fp2_lines[loop1], f'Failed comparing {loop1} : {line} != {fp2_lines[loop1]}'
+        assert (
+            line == fp2_lines[loop1]
+        ), f"Failed comparing {loop1} : {line} != {fp2_lines[loop1]}"
+
 
 @pytest.mark.parametrize(
     "model, model_loc",
@@ -50,13 +52,13 @@ def test_hello_world_sram(tmp_path, model, model_loc):
     # Check results
     compare_list = [
         f"{model}_summary_Ethos_U55_High_End_Embedded.csv",
-        f"{model}_vela.tflite"
+        f"{model}_vela.tflite",
     ]
 
     for fn in compare_list:
         assert filecmp.cmp(
             f"tests/golden/{model_dir}/{fn}", f"{out_dir}/{fn}", shallow=False
-        ), f'Testing file {fn}'
+        ), f"Testing file {fn}"
 
     # Check for created files
     compare_model_cc(f"{out_dir}/model.cc", f"tests/golden/{model_dir}/model.cc")

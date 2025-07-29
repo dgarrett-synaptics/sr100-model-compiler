@@ -290,7 +290,7 @@ def main(args=None):
         year=datetime.datetime.now().year,
     )
 
-    print(f'memory_mode = {memory_mode}')
+    print(f"memory_mode = {memory_mode}")
     if args.compiler == "vela":
 
         arm_config = get_platform_path("Arm/vela.ini")
