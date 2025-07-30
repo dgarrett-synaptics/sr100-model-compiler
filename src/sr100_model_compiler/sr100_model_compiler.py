@@ -306,7 +306,7 @@ def get_vela_summary(output_dir, model_name):
 def compiler_main(args):
     """Main function with input args"""
 
-    #if args is None:
+    # if args is None:
     #    args = process_args()
 
     results = None
@@ -387,6 +387,7 @@ def compiler_main(args):
 
     return results
 
+
 def sr100_model_compiler(**kwargs):
     """Python entry functions for the call"""
 
@@ -413,10 +414,12 @@ def sr100_model_compiler(**kwargs):
     args = argparse.Namespace(**kwargs)
     return compiler_main(args)
 
+
 def main():
     """Main for the command line compiler"""
     compiler_main(process_args())
     return 0
+
 
 if __name__ == "__main__":
     main()

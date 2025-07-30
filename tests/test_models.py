@@ -1,4 +1,5 @@
 """Testing different builds of models"""
+
 import os
 import filecmp
 import pytest
@@ -63,8 +64,8 @@ def test_model(tmp_path, model, model_loc, python_call):
             f"sr100_model_compiler -m tests/models/{model}.tflite"
             f" --output-dir {out_dir} --model-loc {model_loc}"
         )
-        print(f'success = {success}')
-        #assert success is True, f'Failed to run command on {model}'
+        print(f"success = {success}")
+        # assert success is True, f'Failed to run command on {model}'
 
     # Check results
     compare_list = [

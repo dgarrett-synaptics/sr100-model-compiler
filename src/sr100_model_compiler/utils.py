@@ -14,7 +14,7 @@ def shell_cmd(cmd):
         print(f"ERROR in command {e}")
         return False, "ERROR"
 
-    print(f'utils = shell_cmd = {result}')
+    print(f"utils = shell_cmd = {result}")
     return True, result.stdout.strip()
 
 
