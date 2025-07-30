@@ -32,7 +32,7 @@ make all
 make format
 ```
 
-### Running the DV Testcases
+### Running the command line compiler
 
 ```bash
 usage: sr100_model_compiler [-h] -m MODEL_FILE [-o OUTPUT_DIR] [-n NAMESPACE] [-s {model,inout} [{model,inout} ...]] [-i INPUT [INPUT ...]] [-c {vela,synai,none}]

@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 import datetime
 import glob
+import csv
 from jinja2 import Environment, FileSystemLoader
 
 # import platform
@@ -248,6 +249,9 @@ def setup_input(args):
     file_name = os.path.basename(args.model_file)
     args.model_file = os.path.abspath(args.model_file)
 
+    # Grab the summary file
+    model_name = args.model_file.split("/")[-1].replace(".tflite", "")
+
     if args.compiler == "vela":
         new_tflite_file_name = file_name.split(".")[0] + "_vela.tflite"
     elif args.compiler == "synai":
@@ -261,17 +265,54 @@ def setup_input(args):
 
     new_model_file = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
 
-    return args, memory_mode, scripts_to_run, new_model_file
+    return args, memory_mode, scripts_to_run, new_model_file, model_name
 
 
-def main(args=None):
+def get_vela_summary(output_dir, model_name):
+    """
+    Parses a CSV file into a list of dictionaries, where each dictionary
+    represents a row and uses the header row as keys.
+
+    Args:
+        filename (str): The path to the CSV file.
+
+    Returns:
+        list: A list of dictionaries, or an empty list if the file is not found.
+    """
+
+    # Grab the summary file
+    summary_files = glob.glob(
+        get_platform_path(f"{output_dir}/{model_name}_summary_Ethos_U55*.csv")
+    )
+    assert len(summary_files) == 1, "Failed to find summary file"
+    summary_file = summary_files[0]
+
+    data = []
+    try:
+        with open(summary_file, "r", newline="", encoding="utf-8") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                data.append(row)
+    except FileNotFoundError:
+        print(f"Error: The file '{summary_file}' was not found.")
+
+    if len(data) == 1:
+        data = data[0]
+    for key in data.keys():
+        print(f"{key} = {data[key]}")
+    return data
+
+
+def compiler_main(args):
     """Main function with input args"""
 
-    if args is None:
-        args = process_args()
+    #if args is None:
+    #    args = process_args()
+
+    results = None
 
     synai_ethosu_op_found = 0
-    args, memory_mode, scripts_to_run, new_model_file = setup_input(args)
+    args, memory_mode, scripts_to_run, new_model_file, model_name = setup_input(args)
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
@@ -308,9 +349,8 @@ def main(args=None):
         ]
         if args.arena_cache_size:
             vela_params.append(f"--arena-cache-size={args.arena_cache_size}")
-        # TODO - need later version
-        # if args.verbose_cycle_estimate:
-        #    vela_params.append('--verbose-cycle-estimate')
+        if args.verbose_cycle_estimate:
+            vela_params.append("--verbose-cycle-estimate")
         if args.verbose_all:
             vela_params.append("--verbose-all")
         vela_params.append(args.model_file)
@@ -318,6 +358,10 @@ def main(args=None):
         print("************ VELA ************")
         subprocess.run(vela_params, check=True)
         print("********* END OF VELA *********")
+
+        # Grab the summary file
+        results = get_vela_summary(args.output_dir, model_name)
+
     elif args.compiler == "synai":
         # Generate synai optimized model
         print("*********** SYNAI **********")
@@ -341,11 +385,12 @@ def main(args=None):
         elif script == "inout":
             gen_inout_script(synai_ethosu_op_found, args, license_header)
 
+    return results
 
 def sr100_model_compiler(**kwargs):
     """Python entry functions for the call"""
 
-    # TODO - should derive defaults from argparse as well
+    # should derive defaults from argparse as well
     if "output_dir" not in kwargs:
         kwargs["output_dir"] = "."
     if "namespace" not in kwargs:
@@ -366,8 +411,12 @@ def sr100_model_compiler(**kwargs):
         kwargs["verbose_all"] = None
 
     args = argparse.Namespace(**kwargs)
-    main(args)
+    return compiler_main(args)
 
+def main():
+    """Main for the command line compiler"""
+    compiler_main(process_args())
+    return 0
 
 if __name__ == "__main__":
     main()
