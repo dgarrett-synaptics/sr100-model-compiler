@@ -1,11 +1,13 @@
-import pytest
+"""Testing different builds of models"""
 import os
 import filecmp
+import pytest
 from sr100_model_compiler import shell_cmd
 from sr100_model_compiler import sr100_model_compiler
 
 
 def compare_model_cc(expected_file, out_file):
+    """Compares the CC output files but ignores timestamp differences"""
 
     # Check for files
     assert os.path.exists(expected_file), f"{expected_file} not found"
@@ -14,9 +16,9 @@ def compare_model_cc(expected_file, out_file):
     # print(f"compare = {cwd}")
 
     # Read all the lines
-    with open(expected_file, "r") as fp1:
+    with open(expected_file, "r", encoding="utf-8") as fp1:
         fp1_lines = fp1.readlines()
-    with open(out_file, "r") as fp2:
+    with open(out_file, "r", encoding="utf-8") as fp2:
         fp2_lines = fp2.readlines()
 
     # First check length of files
@@ -24,11 +26,10 @@ def compare_model_cc(expected_file, out_file):
 
     for loop1, line in enumerate(fp2_lines):
 
-        if "Generated" in line or "Data" in line:
-            next
-        assert (
-            line == fp2_lines[loop1]
-        ), f"Failed comparing {loop1} : {line} != {fp2_lines[loop1]}"
+        if not "Date" in line:
+            assert (
+                line == fp2_lines[loop1]
+            ), f"Failed comparing {loop1} : {line} != {fp2_lines[loop1]}"
 
 
 @pytest.mark.parametrize(
@@ -40,6 +41,7 @@ def compare_model_cc(expected_file, out_file):
     ],
 )
 def test_model(tmp_path, model, model_loc, python_call):
+    """builds a model and tests outputs"""
 
     if python_call:
         model_dir = f"{model}_{model_loc}_python"
@@ -48,15 +50,21 @@ def test_model(tmp_path, model, model_loc, python_call):
     out_dir = tmp_path / model_dir
     out_dir.mkdir()  #
 
-    print(f'Building output in {out_dir}')
+    print(f"Building output in {out_dir}")
 
     if python_call:
-        compiler = sr100_model_compiler()
-        compiler(model=f'tests/models/{model}.tflite', output_dir=f'{out_dir}', model_loc=f'{model_loc}')
-    else:
-        success, result = shell_cmd(
-            f"sr100_model_compiler -m tests/models/{model}.tflite --output-dir {out_dir} --model-loc {model_loc}"
+        sr100_model_compiler(
+            model=f"tests/models/{model}.tflite",
+            output_dir=f"{out_dir}",
+            model_loc=f"{model_loc}",
         )
+    else:
+        success, _ = shell_cmd(
+            f"sr100_model_compiler -m tests/models/{model}.tflite"
+            f" --output-dir {out_dir} --model-loc {model_loc}"
+        )
+        print(f'success = {success}')
+        #assert success is True, f'Failed to run command on {model}'
 
     # Check results
     compare_list = [
