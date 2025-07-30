@@ -249,6 +249,9 @@ def setup_input(args):
     file_name = os.path.basename(args.model_file)
     args.model_file = os.path.abspath(args.model_file)
 
+    # Grab the summary file
+    model_name = args.model_file.split("/")[-1].replace(".tflite", "")
+
     if args.compiler == "vela":
         new_tflite_file_name = file_name.split(".")[0] + "_vela.tflite"
     elif args.compiler == "synai":
@@ -262,7 +265,8 @@ def setup_input(args):
 
     new_model_file = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
 
-    return args, memory_mode, scripts_to_run, new_model_file
+
+    return args, memory_mode, scripts_to_run, new_model_file, model_name
 
 
 def parse_csv_summary(summary_file):
@@ -278,7 +282,7 @@ def parse_csv_summary(summary_file):
     """
     data = []
     try:
-        with open(summary_file, 'r', newline='') as csvfile:
+        with open(summary_file, "r", newline="") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 data.append(row)
@@ -288,7 +292,7 @@ def parse_csv_summary(summary_file):
     if len(data) == 1:
         data = data[0]
     for key in data.keys():
-        print(f'{key} = {data[key]}')
+        print(f"{key} = {data[key]}")
     return data
 
 
@@ -298,8 +302,10 @@ def main(args=None):
     if args is None:
         args = process_args()
 
+    results = None
+
     synai_ethosu_op_found = 0
-    args, memory_mode, scripts_to_run, new_model_file = setup_input(args)
+    args, memory_mode, scripts_to_run, new_model_file, model_name = setup_input(args)
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
@@ -348,13 +354,12 @@ def main(args=None):
         print("********* END OF VELA *********")
 
         # Grab the summary file
-        model_name = args.model_file.split('/')[-1].replace('.tflite', '')
-        summary_files = glob.glob(f'{args.output_dir}/*Ethos_U55*.csv')
-        for summary_file in summary_files:
-            if model_name in summary_file:
-                print(f"Found file {summary_file}")
-                parse_csv_summary(summary_file)
-                sys.exit()
+        #model_name = args.model_file.split("/")[-1].replace(".tflite", "")
+        summary_files = glob.glob(f"{args.output_dir}/{model_name}_summary_Ethos_U55*.csv")
+        assert len(summary_files) == 1, f'Failed to find summary file' 
+        results = parse_csv_summary(summary_files[0])
+
+        print(f'vela_results = {results}')
 
     elif args.compiler == "synai":
         # Generate synai optimized model
@@ -379,8 +384,7 @@ def main(args=None):
         elif script == "inout":
             gen_inout_script(synai_ethosu_op_found, args, license_header)
 
-
-
+    return results
 
 def sr100_model_compiler(**kwargs):
     """Python entry functions for the call"""

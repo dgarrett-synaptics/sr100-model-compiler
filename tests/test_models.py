@@ -39,7 +39,7 @@ def compare_model_cc(expected_file, out_file):
         ("model_256x480", "sram", False),
     ],
 )
-def test_hello_world_sram(tmp_path, model, model_loc, python_call):
+def test_model(tmp_path, model, model_loc, python_call):
 
     if python_call:
         model_dir = f"{model}_{model_loc}_python"
@@ -47,6 +47,8 @@ def test_hello_world_sram(tmp_path, model, model_loc, python_call):
         model_dir = f"{model}_{model_loc}"
     out_dir = tmp_path / model_dir
     out_dir.mkdir()  #
+
+    print(f'Building output in {out_dir}')
 
     if python_call:
         compiler = sr100_model_compiler()
