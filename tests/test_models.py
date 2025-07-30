@@ -32,22 +32,29 @@ def compare_model_cc(expected_file, out_file):
 
 
 @pytest.mark.parametrize(
-    "model, model_loc",
+    "model, model_loc, python_call",
     [
-        ("hello_world", "sram"),
-        ("hello_world", "flash"),
-        ("model_256x480", "sram"),
+        ("hello_world", "sram", False),
+        ("hello_world", "flash", False),
+        ("model_256x480", "sram", False),
     ],
 )
-def test_hello_world_sram(tmp_path, model, model_loc):
+def test_hello_world_sram(tmp_path, model, model_loc, python_call):
 
-    model_dir = f"{model}_{model_loc}"
+    if python_call:
+        model_dir = f"{model}_{model_loc}_python"
+    else:
+        model_dir = f"{model}_{model_loc}"
     out_dir = tmp_path / model_dir
     out_dir.mkdir()  #
 
-    success, result = shell_cmd(
-        f"sr100_model_compiler -m tests/models/{model}.tflite --output-dir {out_dir} --model-loc {model_loc}"
-    )
+    if python_call:
+        compiler = sr100_model_compiler()
+        compiler(model=f'tests/models/{model}.tflite', output_dir=f'{out_dir}', model_loc=f'{model_loc}')
+    else:
+        success, result = shell_cmd(
+            f"sr100_model_compiler -m tests/models/{model}.tflite --output-dir {out_dir} --model-loc {model_loc}"
+        )
 
     # Check results
     compare_list = [

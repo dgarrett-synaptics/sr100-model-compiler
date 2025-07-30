@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 import datetime
 import glob
+import csv
 from jinja2 import Environment, FileSystemLoader
 
 # import platform
@@ -264,6 +265,33 @@ def setup_input(args):
     return args, memory_mode, scripts_to_run, new_model_file
 
 
+def parse_csv_summary(summary_file):
+    """
+    Parses a CSV file into a list of dictionaries, where each dictionary
+    represents a row and uses the header row as keys.
+
+    Args:
+        filename (str): The path to the CSV file.
+
+    Returns:
+        list: A list of dictionaries, or an empty list if the file is not found.
+    """
+    data = []
+    try:
+        with open(summary_file, 'r', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                data.append(row)
+    except FileNotFoundError:
+        print(f"Error: The file '{filename}' was not found.")
+
+    if len(data) == 1:
+        data = data[0]
+    for key in data.keys():
+        print(f'{key} = {data[key]}')
+    return data
+
+
 def main(args=None):
     """Main function with input args"""
 
@@ -318,6 +346,16 @@ def main(args=None):
         print("************ VELA ************")
         subprocess.run(vela_params, check=True)
         print("********* END OF VELA *********")
+
+        # Grab the summary file
+        model_name = args.model_file.split('/')[-1].replace('.tflite', '')
+        summary_files = glob.glob(f'{args.output_dir}/*Ethos_U55*.csv')
+        for summary_file in summary_files:
+            if model_name in summary_file:
+                print(f"Found file {summary_file}")
+                parse_csv_summary(summary_file)
+                sys.exit()
+
     elif args.compiler == "synai":
         # Generate synai optimized model
         print("*********** SYNAI **********")
@@ -340,6 +378,8 @@ def main(args=None):
             )
         elif script == "inout":
             gen_inout_script(synai_ethosu_op_found, args, license_header)
+
+
 
 
 def sr100_model_compiler(**kwargs):
