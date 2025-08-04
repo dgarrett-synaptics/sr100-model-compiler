@@ -334,12 +334,14 @@ def compiler_main(args):
     print(f"memory_mode = {memory_mode}")
     if args.compiler == "vela":
 
-        #arm_config = get_platform_path("Arm/vela.ini")
-        arm_config = get_platform_path(f'{script_dir}/config/u55_eval_with_TA_config_400_and_200_MHz.ini')
-        print(f'arm_config = {arm_config}')
+        # arm_config = get_platform_path("Arm/vela.ini")
+        arm_config = get_platform_path(
+            f"{script_dir}/config/u55_eval_with_TA_config_400_and_200_MHz.ini"
+        )
+        print(f"arm_config = {arm_config}")
 
-        system_config = 'Ethos_U55_High_End_Embedded'
-        system_config = 'Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs'
+        system_config = "Ethos_U55_High_End_Embedded"
+        system_config = "Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs"
 
         # Generate vela optimized model
         vela_params = [
