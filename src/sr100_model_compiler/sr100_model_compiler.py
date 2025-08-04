@@ -155,6 +155,12 @@ def process_args():
         "-m", "--model-file", type=str, help="Path to TFLite model file", required=True
     )
     parser.add_argument(
+        "--system-config",
+        type=str,
+        default="Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs",
+        help="Sets system config selection",
+    )
+    parser.add_argument(
         "-o",
         "--output-dir",
         type=str,
@@ -338,10 +344,6 @@ def compiler_main(args):
         arm_config = get_platform_path(
             f"{script_dir}/config/u55_eval_with_TA_config_400_and_200_MHz.ini"
         )
-        print(f"arm_config = {arm_config}")
-
-        system_config = "Ethos_U55_High_End_Embedded"
-        system_config = "Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs"
 
         # Generate vela optimized model
         vela_params = [
@@ -352,7 +354,7 @@ def compiler_main(args):
             "--optimise=" + args.optimize,
             f"--config={arm_config}",
             memory_mode,
-            f"--system-config={system_config}",
+            f"--system-config={args.system_config}",
         ]
         if args.arena_cache_size:
             vela_params.append(f"--arena-cache-size={args.arena_cache_size}")
@@ -417,6 +419,8 @@ def sr100_model_compiler(**kwargs):
         kwargs["arena_cache_size"] = None
     if "verbose_all" not in kwargs:
         kwargs["verbose_all"] = None
+    if "system_config" not in kwargs:
+        kwargs["system_config"] = "Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs"
 
     args = argparse.Namespace(**kwargs)
     return compiler_main(args)
