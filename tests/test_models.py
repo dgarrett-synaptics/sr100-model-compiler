@@ -69,7 +69,7 @@ def test_model(tmp_path, model, model_loc, python_call):
 
     # Check results
     compare_list = [
-        f"{model}_summary_Ethos_U55_High_End_Embedded.csv",
+        f"{model}_summary_Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs.csv",
         f"{model}_vela.tflite",
     ]
 
