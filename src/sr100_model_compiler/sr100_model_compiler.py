@@ -282,7 +282,7 @@ def get_vela_summary(output_dir, model_name):
 
     # Grab the summary file
     summary_files = glob.glob(
-        get_platform_path(f"{output_dir}/{model_name}_summary_Ethos_U55*.csv")
+        get_platform_path(f"{output_dir}/{model_name}_summary_*.csv")
     )
     assert len(summary_files) == 1, "Failed to find summary file"
     summary_file = summary_files[0]
@@ -334,7 +334,12 @@ def compiler_main(args):
     print(f"memory_mode = {memory_mode}")
     if args.compiler == "vela":
 
-        arm_config = get_platform_path("Arm/vela.ini")
+        #arm_config = get_platform_path("Arm/vela.ini")
+        arm_config = get_platform_path(f'{script_dir}/config/u55_eval_with_TA_config_400_and_200_MHz.ini')
+        print(f'arm_config = {arm_config}')
+
+        system_config = 'Ethos_U55_High_End_Embedded'
+        system_config = 'Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs'
 
         # Generate vela optimized model
         vela_params = [
@@ -345,7 +350,7 @@ def compiler_main(args):
             "--optimise=" + args.optimize,
             f"--config={arm_config}",
             memory_mode,
-            "--system-config=Ethos_U55_High_End_Embedded",
+            f"--system-config={system_config}",
         ]
         if args.arena_cache_size:
             vela_params.append(f"--arena-cache-size={args.arena_cache_size}")
