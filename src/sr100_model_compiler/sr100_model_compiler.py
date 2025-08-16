@@ -394,9 +394,6 @@ def sr100_check_model(summary_file=None, results=None):
 def compiler_main(args): # pylint: disable=R0914
     """Main function with input args"""
 
-    # if args is None:
-    #    args = process_args()
-
     results = None
 
     synai_ethosu_op_found = 0
