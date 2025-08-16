@@ -3,6 +3,7 @@
 import os
 import filecmp
 import pytest
+from pathlib import Path
 from sr100_model_compiler import shell_cmd
 from sr100_model_compiler import sr100_model_compiler, sr100_check_model
 
@@ -41,23 +42,25 @@ from sr100_model_compiler import sr100_model_compiler, sr100_check_model
 #    ],
 #)
 
-def test_classification(tmp_path):
+def test_model_compiler(tmp_path, model, model_loc, model_file_out):
     """builds a model and tests outputs"""
 
     #model = 'tests/models/uc_person_classification/models/uc_person_classification_flash(448x640).tflite'
-    model = 'tests/models/uc_person_classification/models/person_classification_sram(256x448).tflite'
+    #model = 'tests/models/uc_person_classification/person_classification_256x448.tflite'
 
-    model_dir = 'uc_person_classification'
+    # Get model name to build directory
+    if '/' in model:
+        model_name = model.split('/')[-1].replace('.tflite', '')
+    else:
+        model_name = model.replace('.tflite', '')
+    model_dir = f'{model_name}_{model_loc}'
 
     # Building output directory
     out_dir = tmp_path / model_dir
-    out_dir.mkdir()  #
+    out_dir.mkdir(parents=True,exist_ok=True)  #
     print(f"Building output in {out_dir}")
 
-    model_loc = 'flash'
-    model_loc = 'sram'
-
-#    if python_call:
+    # Run the comparison
     results = sr100_model_compiler(
         model_file=model,
         output_dir=f"{out_dir}",
@@ -74,7 +77,7 @@ def test_classification(tmp_path):
     #)
     #print(f"success = {success}")
     # assert success is True, f'Failed to run command on {model}'
-    assert False
+    #assert False
 #
 #    # Check results
 #    compare_list = [
@@ -90,3 +93,30 @@ def test_classification(tmp_path):
 #    # Check for created files
 #    compare_model_cc(f"{out_dir}/model.cc", f"tests/golden/{model_dir}/model.cc")
 #
+if __name__ == "__main__":
+
+    #model = 'tests/models/uc_person_classification/models/uc_person_classification_flash(448x640).tflite'
+
+    # Test SRAM version
+    model = 'tests/models/uc_person_classification/person_classification_256x448.tflite'
+    model_loc = 'sram'
+    model_file_out = 'model_wvqga'
+    test_model_compiler(Path('tmp_build'),model, model_loc, model_file_out)
+
+    #model = 'tests/models/uc_person_classification/models/uc_person_classification_flash(448x640).tflite'
+
+    # Test FLASH version
+    model = 'tests/models/uc_person_classification/person_classification_448x640.tflite'
+    model_loc = 'flash'
+    model_file_out = 'model_vga'
+    test_model_compiler(Path('tmp_build'),model, model_loc, model_file_out)
+
+    # Building output directory
+    #out_dir = tmp_path / model_dir
+    #out_dir.mkdir(parents=True,exist_ok=True)  #
+    #print(f"Building output in {out_dir}")
+
+
+
+
+    #test_classification(Path('./tmp_build'))

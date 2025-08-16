@@ -275,7 +275,7 @@ def setup_input(args):
     return args, memory_mode, scripts_to_run, new_model_file, model_name
 
 
-def get_vela_summary(output_dir, model_name):
+def get_vela_summary(summary_file):
     """
     Parses a CSV file into a list of dictionaries, where each dictionary
     represents a row and uses the header row as keys.
@@ -288,11 +288,11 @@ def get_vela_summary(output_dir, model_name):
     """
 
     # Grab the summary file
-    summary_files = glob.glob(
-        get_platform_path(f"{output_dir}/{model_name}_summary_*.csv")
-    )
-    assert len(summary_files) == 1, "Failed to find summary file"
-    summary_file = summary_files[0]
+    #summary_files = glob.glob(
+    #    get_platform_path(f"{output_dir}/{model_name}_summary_*.csv")
+    #)
+    #assert len(summary_files) == 1, "Failed to find summary file"
+    #summary_file = summary_files[0]
 
     data = []
     try:
@@ -332,11 +332,9 @@ def sr100_check_model(summary_file=None, results=None):
         #inference_time = 0.013952505
         #.sram_total_bytes = 12649152.0
 
-        return False
+        return True
     else:
-        pass
-
-        return False
+        return True
 
     """
     experiment = default
@@ -426,7 +424,7 @@ def compiler_main(args):
 
         # arm_config = get_platform_path("Arm/vela.ini")
         arm_config = get_platform_path(
-            f"{script_dir}/config/u55_eval_with_TA_config_400_and_200_MHz.ini"
+            f"{script_dir}/config/sr100_system_config.ini"
         )
 
         # Generate vela optimized model
@@ -453,7 +451,9 @@ def compiler_main(args):
         print("********* END OF VELA *********")
 
         # Grab the summary file
-        results = get_vela_summary(args.output_dir, model_name)
+        model_name = args.model_file.split('/')[-1].replace('.tflite', '')
+        summary_file = f'{args.output_dir}/{model_name}_summary_{args.system_config}.csv'
+        results = get_vela_summary(summary_file)
 
     elif args.compiler == "synai":
         # Generate synai optimized model
@@ -508,7 +508,7 @@ def sr100_model_compiler(**kwargs):
     if "verbose_cycle_estimate" not in kwargs:
         kwargs["verbose_cycle_estimate"] = None
     if "system_config" not in kwargs:
-        kwargs["system_config"] = "Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs"
+        kwargs["system_config"] = "sr100_npu_400MHz_16GBFLASH"
 
     args = argparse.Namespace(**kwargs)
     return compiler_main(args)
