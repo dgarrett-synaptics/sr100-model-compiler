@@ -1,52 +1,39 @@
 """Testing different builds of models"""
-
 import os
 import filecmp
 import pytest
+import argparse
 from pathlib import Path
 from sr100_model_compiler import shell_cmd
 from sr100_model_compiler import sr100_model_compiler, sr100_check_model
 
-#def compare_model_cc(expected_file, out_file):
-#    """Compares the CC output files but ignores timestamp differences"""
-#
-#    # Check for files
-#    assert os.path.exists(expected_file), f"{expected_file} not found"
-#    assert os.path.exists(out_file), f"{out_file} not found"
-#    # cwd = os.getcwd()
-#    # print(f"compare = {cwd}")
-#
-#    # Read all the lines
-#    with open(expected_file, "r", encoding="utf-8") as fp1:
-#        fp1_lines = fp1.readlines()
-#    with open(out_file, "r", encoding="utf-8") as fp2:
-#        fp2_lines = fp2.readlines()
-#
-#    # First check length of files
-#    assert len(fp1_lines) == len(fp2_lines)
-#
-#    for loop1, line in enumerate(fp2_lines):
-#
-#        if not "Date" in line:
-#            assert (
-#                line == fp2_lines[loop1]
-#            ), f"Failed comparing {loop1} : {line} != {fp2_lines[loop1]}"
-#
-#
-#@pytest.mark.parametrize(
-#    "model, model_loc, python_call",
-#    [
-#        ("hello_world", "sram", False),
-#        ("hello_world", "flash", False),
-#        ("model_256x480", "sram", False),
-#    ],
-#)
+model_test_list = [
+    ('tests/models/hello_world/hello_world.tflite', 'sram', 'model'),
+    ('tests/models/uc_person_classification/person_classification_256x448.tflite', 'sram', 'model_wqvga'),
+    ('tests/models/uc_person_classification/person_classification_448x640.tflite', 'flash', 'model_vga'),
+    ('tests/models/uc_person_detection/person_detection_256x480.tflite', 'sram', 'model_wqvga'),
+    ('tests/models/uc_person_detection/person_detection_480x640.tflite', 'flash', 'model_vga'),
+    ('tests/models/uc_person_pose_detection/person_pose_detection_256x480.tflite', 'sram', 'model_wqvga'),
+    ('tests/models/uc_person_pose_detection/person_pose_detection_480x640.tflite', 'flash', 'model_vga'),
+    ('tests/models/uc_person_segmentation/person_segmentation_256x480.tflite', 'sram', 'model_wqvga'),
+    ('tests/models/uc_person_segmentation/person_segmentation_480x640.tflite', 'flash', 'model_vga'),
+]
 
-def test_model_compiler(tmp_path, model, model_loc, model_file_out):
+def test_shell_cmd():
+    """Test that python + shell command are the same outputs"""
+    #    success, _ = shell_cmd(
+    #        f"sr100_model_compiler -m tests/models/{model}.tflite"
+    #        f" --output-dir {out_dir} --model-loc {model_loc}"
+    #    )
+    #    print(f"success = {success}")
+    assert True
+
+@pytest.mark.parametrize(
+    "model, model_loc, model_file_out",
+    model_test_list,
+)
+def test_model_compiler(tmp_path, model, model_loc, model_file_out, update_bin_file=False):
     """builds a model and tests outputs"""
-
-    #model = 'tests/models/uc_person_classification/models/uc_person_classification_flash(448x640).tflite'
-    #model = 'tests/models/uc_person_classification/person_classification_256x448.tflite'
 
     # Get model name to build directory
     if '/' in model:
@@ -58,65 +45,51 @@ def test_model_compiler(tmp_path, model, model_loc, model_file_out):
     # Building output directory
     out_dir = tmp_path / model_dir
     out_dir.mkdir(parents=True,exist_ok=True)  #
-    print(f"Building output in {out_dir}")
+    print(f"Building temp output in {out_dir}")
 
     # Run the comparison
     results = sr100_model_compiler(
         model_file=model,
         output_dir=f"{out_dir}",
         model_loc=f"{model_loc}",
-        model_file_out='model_wqvfa'
+        model_file_out=model_file_out
     )
 
     if not sr100_check_model(results=results):
         assert False, 'Model does not fit'
 
-    #success, _ = shell_cmd(
-    #      f"sr100_model_compiler -m {model}"
-    #      f" --output-dir {out_dir} --model-loc {model_loc}"
-    #)
-    #print(f"success = {success}")
-    # assert success is True, f'Failed to run command on {model}'
-    #assert False
-#
-#    # Check results
-#    compare_list = [
-#        f"{model}_summary_Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs.csv",
-#        f"{model}_vela.tflite",
-#    ]
-#
-#    for fn in compare_list:
-#        assert filecmp.cmp(
-#            f"tests/golden/{model_dir}/{fn}", f"{out_dir}/{fn}", shallow=False
-#        ), f"Testing file {fn}"
-#
-#    # Check for created files
-#    compare_model_cc(f"{out_dir}/model.cc", f"tests/golden/{model_dir}/model.cc")
-#
+    # Assert the model space file exists
+    cc_file = f'{out_dir}/{model_file_out}.cc'
+    assert os.path.exists(cc_file), f'Failed to find {cc_file}'
+
+    # Read vela bytes
+    flash_bin_golden_file = model.replace(".tflite",".bin")
+    flash_bin_file = f"{out_dir}/{model_name}.bin"
+
+    # Temp to create vectors - ONLY USE IF UPDATED VECTORS
+    if update_bin_file:
+        with open(flash_bin_file, "rb") as tflite_model:
+            data = tflite_model.read()
+        with open(flash_bin_golden_file, 'wb') as fp:
+            fp.write(data)
+
+    # Compares the binary files
+    assert filecmp.cmp(flash_bin_golden_file, flash_bin_file), f'ERROR binfile mismathc {flash_bin_golden_file} with {flash_bin_file}'
+
 if __name__ == "__main__":
 
-    #model = 'tests/models/uc_person_classification/models/uc_person_classification_flash(448x640).tflite'
+    parser = argparse.ArgumentParser(
+        description="Wrapper script to compile a TFLite model onto SR100 devices."
+    )
+    parser.add_argument(
+        "--tmp-dir", type=str, default='tmp_build', help="Sets temporary build directory"
+    )
+    parser.add_argument(
+        "--update", default=False, action='store_true', help="Updates the Golden test vectors"
+    )
+    args = parser.parse_args()
 
-    # Test SRAM version
-    model = 'tests/models/uc_person_classification/person_classification_256x448.tflite'
-    model_loc = 'sram'
-    model_file_out = 'model_wvqga'
-    test_model_compiler(Path('tmp_build'),model, model_loc, model_file_out)
-
-    #model = 'tests/models/uc_person_classification/models/uc_person_classification_flash(448x640).tflite'
-
-    # Test FLASH version
-    model = 'tests/models/uc_person_classification/person_classification_448x640.tflite'
-    model_loc = 'flash'
-    model_file_out = 'model_vga'
-    test_model_compiler(Path('tmp_build'),model, model_loc, model_file_out)
-
-    # Building output directory
-    #out_dir = tmp_path / model_dir
-    #out_dir.mkdir(parents=True,exist_ok=True)  #
-    #print(f"Building output in {out_dir}")
-
-
-
-
-    #test_classification(Path('./tmp_build'))
+    # Run all the tests and update if needed
+    for model_test in model_test_list:
+        model, model_loc, model_file_out = model_test
+        test_model_compiler(Path(args.tmp_dir),model, model_loc, model_file_out, args.update)

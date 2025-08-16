@@ -50,16 +50,14 @@ def generate_model_cpp(
     ).dump(str(cpp_filename))
 
     # Write the binary file
-    if tflite_loc == 'flash':
+    flash_file = tflite_path.replace("_vela.tflite", ".bin")
 
-        flash_file = tflite_path.replace("_vela.tflite", ".bin")
-
-        # Read vela bytes
-        with open(tflite_path, "rb") as tflite_model:
-            data = tflite_model.read()
-        # Write to binary file
-        with open(flash_file, 'wb') as fp:
-            fp.write(data)
+    # Read vela bytes
+    with open(tflite_path, "rb") as tflite_model:
+        data = tflite_model.read()
+    # Write to binary file
+    with open(flash_file, 'wb') as fp:
+        fp.write(data)
 
 
 def get_tflite_data(tflite_path):
