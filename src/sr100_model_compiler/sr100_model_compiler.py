@@ -310,12 +310,17 @@ def get_vela_summary(output_dir, model_name):
     return data
 
 
-def check_sr100_parameters(results):
-    """Check model on SR100 data fit"""
+def sr100_check_model(summary_file=None, results=None):
+    """Check model on SR100 data file to see if it fits"""
 
-    if results['memory_mode'] == 'Sram_Only':
+    # Reads the Vela results file
+    if results:
+        results_dict = results
+    else:
+        results_dict = get_vela_summary(summary_file)
+
+    if results_dict['memory_mode'] == 'Sram_Only':
         print(f'Testing SRAM_ONLY')
-
 
         #.cycles_npu = 5580933.0
         #.cycles_sram_access = 1756251.0

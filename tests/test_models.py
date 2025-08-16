@@ -4,11 +4,7 @@ import os
 import filecmp
 import pytest
 from sr100_model_compiler import shell_cmd
-from sr100_model_compiler import sr100_model_compiler
-
-
-
-
+from sr100_model_compiler import sr100_model_compiler, sr100_check_model
 
 #def compare_model_cc(expected_file, out_file):
 #    """Compares the CC output files but ignores timestamp differences"""
@@ -69,7 +65,9 @@ def test_classification(tmp_path):
         model_file_out='model_wqvfa'
     )
 
-    print(results)
+    if not sr100_check_model(results=results):
+        assert False, 'Model does not fit'
+
     #success, _ = shell_cmd(
     #      f"sr100_model_compiler -m {model}"
     #      f" --output-dir {out_dir} --model-loc {model_loc}"
