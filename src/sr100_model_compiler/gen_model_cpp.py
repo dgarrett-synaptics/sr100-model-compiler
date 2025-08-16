@@ -6,8 +6,8 @@ import platform
 
 # Define the choices and corresponding strings for tflite location
 loc_choices = {
-    'sram'  : "MODEL_TFLITE_ATTRIBUTE",  # SRAM
-    'flash' : "MODEL_TFLITE_ATTRIBUTE_FLASH",  # QSPI FLASH
+    "sram": "MODEL_TFLITE_ATTRIBUTE",  # SRAM
+    "flash": "MODEL_TFLITE_ATTRIBUTE_FLASH",  # QSPI FLASH
 }
 
 import datetime
@@ -56,7 +56,7 @@ def generate_model_cpp(
     with open(tflite_path, "rb") as tflite_model:
         data = tflite_model.read()
     # Write to binary file
-    with open(flash_file, 'wb') as fp:
+    with open(flash_file, "wb") as fp:
         fp.write(data)
 
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         type=str,
         choices=loc_choices.keys(),
         help="Choose an option (sram, flash)",
-        default='sram',
+        default="sram",
         required=False,
     )
 

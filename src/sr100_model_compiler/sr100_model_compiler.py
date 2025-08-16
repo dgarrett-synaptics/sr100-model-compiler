@@ -288,11 +288,11 @@ def get_vela_summary(summary_file):
     """
 
     # Grab the summary file
-    #summary_files = glob.glob(
+    # summary_files = glob.glob(
     #    get_platform_path(f"{output_dir}/{model_name}_summary_*.csv")
-    #)
-    #assert len(summary_files) == 1, "Failed to find summary file"
-    #summary_file = summary_files[0]
+    # )
+    # assert len(summary_files) == 1, "Failed to find summary file"
+    # summary_file = summary_files[0]
 
     data = []
     try:
@@ -319,79 +319,79 @@ def sr100_check_model(summary_file=None, results=None):
     else:
         results_dict = get_vela_summary(summary_file)
 
-    if results_dict['memory_mode'] == 'Sram_Only':
-        print(f'Testing SRAM_ONLY')
+    if results_dict["memory_mode"] == "Sram_Only":
+        print("Testing SRAM_ONLY")
 
-        #.cycles_npu = 5580933.0
-        #.cycles_sram_access = 1756251.0
-        #.cycles_dram_access = 0.0
-        #.cycles_on_chip_flash_access = 1452188.0
-        #.cycles_off_chip_flash_access = 0.0
-        #.cycles_total = 5581002.0
+        success = True
+        # .cycles_npu = 5580933.0
+        # .cycles_sram_access = 1756251.0
+        # .cycles_dram_access = 0.0
+        # .cycles_on_chip_flash_access = 1452188.0
+        # .cycles_off_chip_flash_access = 0.0
+        # .cycles_total = 5581002.0
 
-        #inference_time = 0.013952505
-        #.sram_total_bytes = 12649152.0
-
-        return True
+        # inference_time = 0.013952505
+        # .sram_total_bytes = 12649152.0
     else:
-        return True
+        success = False
 
-    """
-    experiment = default
-    .network = person_classification_sram(256x448)
-    .accelerator_configuration = Ethos_U55_128
-    .system_config = Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs
-    .memory_mode = Sram_Only
-    .core_clock = 400000000.0
-    .arena_cache_size = 4194304.0
-    .sram_bandwidth = 2.9802322387695312
-    .dram_bandwidth = 2.9802322387695312
-    .on_chip_flash_bandwidth = 2.9802322387695312
-    .off_chip_flash_bandwidth = 2.9802322387695312
-    .weights_storage_area = On-chip Flash
-    .feature_map_storage_area = SRAM
-    .inferences_per_second = 71.67171773097375
-    .batch_size = 1
-    .inference_time = 0.013952505
-    .passes_before_fusing = 90
-    .passes_after_fusing = 2
-    .sram_memory_used = 896.0
-    .dram_memory_used = 0.0
-    .on_chip_flash_memory_used = 1382.421875
-    .off_chip_flash_memory_used = 0.0
-    .total_original_weights = 1442352
-    .total_npu_encoded_weights = 1312128
-    .sram_feature_map_read_bytes = 9561924.0
-    .sram_feature_map_write_bytes = 3087228.0
-    .sram_weight_read_bytes = 0.0
-    .sram_weight_write_bytes = 0.0
-    .sram_total_bytes = 12649152.0
-    .dram_feature_map_read_bytes = 0.0
-    .dram_feature_map_write_bytes = 0.0
-    .dram_weight_read_bytes = 0.0
-    .dram_weight_write_bytes = 0.0
-    .dram_total_bytes = 0.0
-    .on_chip_flash_feature_map_read_bytes = 304.0
-    .on_chip_flash_feature_map_write_bytes = 0.0
-    .on_chip_flash_weight_read_bytes = 11569900.0
-    .on_chip_flash_weight_write_bytes = 0.0
-    .on_chip_flash_total_bytes = 11618528.0
-    .off_chip_flash_feature_map_read_bytes = 0.0
-    .off_chip_flash_feature_map_write_bytes = 0.0
-    .off_chip_flash_weight_read_bytes = 0.0
-    .off_chip_flash_weight_write_bytes = 0.0
-    .off_chip_flash_total_bytes = 0.0
-    .nn_macs = 495952900
-    .nn_tops = 0.0710915925133157
-    .cycles_npu = 5580933.0
-    .cycles_sram_access = 1756251.0
-    .cycles_dram_access = 0.0
-    .cycles_on_chip_flash_access = 1452188.0
-    .cycles_off_chip_flash_access = 0.0
-    .cycles_total = 5581002.0
-    """
 
-def compiler_main(args):
+#    experiment = default
+#    network = person_classification_sram(256x448)
+#    accelerator_configuration = Ethos_U55_128
+#    system_config = Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs
+#    memory_mode = Sram_Only
+#    core_clock = 400000000.0
+#    arena_cache_size = 4194304.0
+#    sram_bandwidth = 2.9802322387695312
+#    dram_bandwidth = 2.9802322387695312
+#    on_chip_flash_bandwidth = 2.9802322387695312
+#    off_chip_flash_bandwidth = 2.9802322387695312
+#    weights_storage_area = On-chip Flash
+#    feature_map_storage_area = SRAM
+#    inferences_per_second = 71.67171773097375
+#    batch_size = 1
+#    inference_time = 0.013952505
+#    passes_before_fusing = 90
+#    passes_after_fusing = 2
+#    sram_memory_used = 896.0
+#    dram_memory_used = 0.0
+#    on_chip_flash_memory_used = 1382.421875
+#    off_chip_flash_memory_used = 0.0
+#    total_original_weights = 1442352
+#    total_npu_encoded_weights = 1312128
+#    sram_feature_map_read_bytes = 9561924.0
+#    sram_feature_map_write_bytes = 3087228.0
+#    sram_weight_read_bytes = 0.0
+#    sram_weight_write_bytes = 0.0
+#    sram_total_bytes = 12649152.0
+#    dram_feature_map_read_bytes = 0.0
+#    dram_feature_map_write_bytes = 0.0
+#    dram_weight_read_bytes = 0.0
+#    dram_weight_write_bytes = 0.0
+#    dram_total_bytes = 0.0
+#    on_chip_flash_feature_map_read_bytes = 304.0
+#    on_chip_flash_feature_map_write_bytes = 0.0
+#    on_chip_flash_weight_read_bytes = 11569900.0
+#    on_chip_flash_weight_write_bytes = 0.0
+#    on_chip_flash_total_bytes = 11618528.0
+#    off_chip_flash_feature_map_read_bytes = 0.0
+#    off_chip_flash_feature_map_write_bytes = 0.0
+#    off_chip_flash_weight_read_bytes = 0.0
+#    off_chip_flash_weight_write_bytes = 0.0
+#    off_chip_flash_total_bytes = 0.0
+#    nn_macs = 495952900
+#    nn_tops = 0.0710915925133157
+#    cycles_npu = 5580933.0
+#    cycles_sram_access = 1756251.0
+#    cycles_dram_access = 0.0
+#    cycles_on_chip_flash_access = 1452188.0
+#    cycles_off_chip_flash_access = 0.0
+#    cycles_total = 5581002.0
+
+    return success
+
+def compiler_main(args): # pylint: disable=R0914
     """Main function with input args"""
 
     # if args is None:
@@ -423,9 +423,7 @@ def compiler_main(args):
     if args.compiler == "vela":
 
         # arm_config = get_platform_path("Arm/vela.ini")
-        arm_config = get_platform_path(
-            f"{script_dir}/config/sr100_system_config.ini"
-        )
+        arm_config = get_platform_path(f"{script_dir}/config/sr100_system_config.ini")
 
         # Generate vela optimized model
         vela_params = [
@@ -451,8 +449,10 @@ def compiler_main(args):
         print("********* END OF VELA *********")
 
         # Grab the summary file
-        model_name = args.model_file.split('/')[-1].replace('.tflite', '')
-        summary_file = f'{args.output_dir}/{model_name}_summary_{args.system_config}.csv'
+        model_name = args.model_file.split("/")[-1].replace(".tflite", "")
+        summary_file = (
+            f"{args.output_dir}/{model_name}_summary_{args.system_config}.csv"
+        )
         results = get_vela_summary(summary_file)
 
     elif args.compiler == "synai":
@@ -486,7 +486,7 @@ def sr100_model_compiler(**kwargs):
 
     # should derive defaults from argparse as well
     if "model_file" not in kwargs:
-        assert False, 'ERROR - you must specify a model-file to analyze'
+        assert False, "ERROR - you must specify a model-file to analyze"
     if "output_dir" not in kwargs:
         kwargs["output_dir"] = "."
     if "model_file_out" not in kwargs:
