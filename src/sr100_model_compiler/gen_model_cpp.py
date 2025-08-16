@@ -6,8 +6,8 @@ import platform
 
 # Define the choices and corresponding strings for tflite location
 loc_choices = {
-    1: "MODEL_TFLITE_ATTRIBUTE",  # SRAM
-    2: "MODEL_TFLITE_ATTRIBUTE_FLASH",  # QSPI FLASH
+    'sram'  : "MODEL_TFLITE_ATTRIBUTE",  # SRAM
+    'flash' : "MODEL_TFLITE_ATTRIBUTE_FLASH",  # QSPI FLASH
 }
 
 import datetime
@@ -18,18 +18,10 @@ from jinja2 import Environment, FileSystemLoader
 def generate_model_cpp(
     tflite_path, output_dir, namespace, tflite_loc, env, license_header
 ):
+
     tflite_loc_choice = loc_choices.get(tflite_loc, "MODEL_TFLITE_ATTRIBUTE")
 
-    # Get the path to the directory containing this script
-    script_dir = Path(__file__).parent
-
-    # Initialize Jinja2 environment
-    # env = Environment(
-    #    loader=FileSystemLoader(script_dir / "templates"),
-    #    trim_blocks=True,
-    #    lstrip_blocks=True,
-    # )
-
+    # Check for the vela output
     if not Path(tflite_path).is_file():
         raise Exception(f"{tflite_path} not found")
 
@@ -50,11 +42,24 @@ def generate_model_cpp(
     model_data, model_length = get_tflite_data(tflite_path)
     env.get_template("tflite.cc.template").stream(
         common_template_header=license_header,
+        tflite_loc=tflite_loc,
         model_data=model_data,
         model_length=model_length,
         namespace=namespace,
         tflite_attribute=tflite_loc_choice,
     ).dump(str(cpp_filename))
+
+    # Write the binary file
+    if tflite_loc == 'flash':
+
+        flash_file = tflite_path.replace("_vela.tflite", ".bin")
+
+        # Read vela bytes
+        with open(tflite_path, "rb") as tflite_model:
+            data = tflite_model.read()
+        # Write to binary file
+        with open(flash_file, 'wb') as fp:
+            fp.write(data)
 
 
 def get_tflite_data(tflite_path):
@@ -108,10 +113,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "-tl",
         "--tflite_loc",
-        type=int,
+        type=str,
         choices=loc_choices.keys(),
-        help="Choose an option (1 : SRAM, 2 : FLASH)",
-        default=1,
+        help="Choose an option (sram, flash)",
+        default='sram',
         required=False,
     )
 
