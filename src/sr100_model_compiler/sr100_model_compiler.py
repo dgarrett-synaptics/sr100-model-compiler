@@ -44,7 +44,7 @@ def gen_model_script(new_model_file, args, env, license_header):
     generate_model_cpp(
         new_model_file,
         args.output_dir,
-        args.namespace,
+        args.model_file_out,
         args.model_loc,
         env,
         license_header,
@@ -58,15 +58,15 @@ def gen_model_script(new_model_file, args, env, license_header):
         common_path,
         [os.path.basename(new_model_file)],
         args.output_dir,
-        args.namespace,
+        args.model_file_out,
         license_header,
     )
 
     # Open the source file in read mode and the destination file in append mode
     src_fn = get_platform_path(
-        args.output_dir + "/" + args.namespace + "_micro_mutable_op_resolver.hpp"
+        args.output_dir + "/" + args.model_file_out + "_micro_mutable_op_resolver.hpp"
     )
-    dest_fn = get_platform_path(args.output_dir + "/" + args.namespace + ".cc")
+    dest_fn = get_platform_path(args.output_dir + "/" + args.model_file_out + ".cc")
     with (
         open(src_fn, "r", encoding="utf-8") as source_file,
         open(dest_fn, "a", encoding="utf-8") as destination_file,
@@ -99,7 +99,7 @@ def gen_model_script(new_model_file, args, env, license_header):
 
     # Delete micro mutable op resolver file if it exists
     micro_mutable_file = get_platform_path(
-        args.output_dir + "/" + args.namespace + "_micro_mutable_op_resolver.hpp"
+        args.output_dir + "/" + args.model_file_out + "_micro_mutable_op_resolver.hpp"
     )
     if os.path.exists(micro_mutable_file):
         os.remove(micro_mutable_file)
@@ -132,7 +132,7 @@ def gen_inout_script(synai_ethosu_op_found, args, license_header):
             generate_input_expected_data(
                 args.model_file,
                 args.output_dir,
-                args.namespace,
+                args.model_file_out,
                 license_header,
                 args.input,
             )
@@ -140,7 +140,7 @@ def gen_inout_script(synai_ethosu_op_found, args, license_header):
             generate_input_expected_data(
                 args.model_file,
                 args.output_dir,
-                args.namespace,
+                args.model_file_out,
                 license_header,
             )
 
@@ -169,9 +169,9 @@ def process_args():
     )
     parser.add_argument(
         "-n",
-        "--namespace",
+        "--model-file-out",
         type=str,
-        help="Namespace to use for generated code",
+        help="Name of the output cc file for the model",
         default="model",
     )
     parser.add_argument(
@@ -180,6 +180,7 @@ def process_args():
         type=str,
         nargs="+",
         choices=["model", "inout"],
+        default=["model"],
         help="Choose specific scripts to run, if not provided then run all scripts",
     )
     parser.add_argument(
@@ -274,7 +275,7 @@ def setup_input(args):
     return args, memory_mode, scripts_to_run, new_model_file, model_name
 
 
-def get_vela_summary(output_dir, model_name):
+def get_vela_summary(summary_file):
     """
     Parses a CSV file into a list of dictionaries, where each dictionary
     represents a row and uses the header row as keys.
@@ -287,11 +288,11 @@ def get_vela_summary(output_dir, model_name):
     """
 
     # Grab the summary file
-    summary_files = glob.glob(
-        get_platform_path(f"{output_dir}/{model_name}_summary_*.csv")
-    )
-    assert len(summary_files) == 1, "Failed to find summary file"
-    summary_file = summary_files[0]
+    # summary_files = glob.glob(
+    #    get_platform_path(f"{output_dir}/{model_name}_summary_*.csv")
+    # )
+    # assert len(summary_files) == 1, "Failed to find summary file"
+    # summary_file = summary_files[0]
 
     data = []
     try:
@@ -309,7 +310,88 @@ def get_vela_summary(output_dir, model_name):
     return data
 
 
-def compiler_main(args):
+def sr100_check_model(summary_file=None, results=None):
+    """Check model on SR100 data file to see if it fits"""
+
+    # Reads the Vela results file
+    if results:
+        results_dict = results
+    else:
+        results_dict = get_vela_summary(summary_file)
+
+    if results_dict["memory_mode"] == "Sram_Only":
+        print("Testing SRAM_ONLY")
+
+        success = True
+        # .cycles_npu = 5580933.0
+        # .cycles_sram_access = 1756251.0
+        # .cycles_dram_access = 0.0
+        # .cycles_on_chip_flash_access = 1452188.0
+        # .cycles_off_chip_flash_access = 0.0
+        # .cycles_total = 5581002.0
+
+        # inference_time = 0.013952505
+        # .sram_total_bytes = 12649152.0
+    else:
+        success = False
+
+
+#    experiment = default
+#    network = person_classification_sram(256x448)
+#    accelerator_configuration = Ethos_U55_128
+#    system_config = Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs
+#    memory_mode = Sram_Only
+#    core_clock = 400000000.0
+#    arena_cache_size = 4194304.0
+#    sram_bandwidth = 2.9802322387695312
+#    dram_bandwidth = 2.9802322387695312
+#    on_chip_flash_bandwidth = 2.9802322387695312
+#    off_chip_flash_bandwidth = 2.9802322387695312
+#    weights_storage_area = On-chip Flash
+#    feature_map_storage_area = SRAM
+#    inferences_per_second = 71.67171773097375
+#    batch_size = 1
+#    inference_time = 0.013952505
+#    passes_before_fusing = 90
+#    passes_after_fusing = 2
+#    sram_memory_used = 896.0
+#    dram_memory_used = 0.0
+#    on_chip_flash_memory_used = 1382.421875
+#    off_chip_flash_memory_used = 0.0
+#    total_original_weights = 1442352
+#    total_npu_encoded_weights = 1312128
+#    sram_feature_map_read_bytes = 9561924.0
+#    sram_feature_map_write_bytes = 3087228.0
+#    sram_weight_read_bytes = 0.0
+#    sram_weight_write_bytes = 0.0
+#    sram_total_bytes = 12649152.0
+#    dram_feature_map_read_bytes = 0.0
+#    dram_feature_map_write_bytes = 0.0
+#    dram_weight_read_bytes = 0.0
+#    dram_weight_write_bytes = 0.0
+#    dram_total_bytes = 0.0
+#    on_chip_flash_feature_map_read_bytes = 304.0
+#    on_chip_flash_feature_map_write_bytes = 0.0
+#    on_chip_flash_weight_read_bytes = 11569900.0
+#    on_chip_flash_weight_write_bytes = 0.0
+#    on_chip_flash_total_bytes = 11618528.0
+#    off_chip_flash_feature_map_read_bytes = 0.0
+#    off_chip_flash_feature_map_write_bytes = 0.0
+#    off_chip_flash_weight_read_bytes = 0.0
+#    off_chip_flash_weight_write_bytes = 0.0
+#    off_chip_flash_total_bytes = 0.0
+#    nn_macs = 495952900
+#    nn_tops = 0.0710915925133157
+#    cycles_npu = 5580933.0
+#    cycles_sram_access = 1756251.0
+#    cycles_dram_access = 0.0
+#    cycles_on_chip_flash_access = 1452188.0
+#    cycles_off_chip_flash_access = 0.0
+#    cycles_total = 5581002.0
+
+    return success
+
+def compiler_main(args): # pylint: disable=R0914
     """Main function with input args"""
 
     # if args is None:
@@ -341,9 +423,7 @@ def compiler_main(args):
     if args.compiler == "vela":
 
         # arm_config = get_platform_path("Arm/vela.ini")
-        arm_config = get_platform_path(
-            f"{script_dir}/config/u55_eval_with_TA_config_400_and_200_MHz.ini"
-        )
+        arm_config = get_platform_path(f"{script_dir}/config/sr100_system_config.ini")
 
         # Generate vela optimized model
         vela_params = [
@@ -369,7 +449,11 @@ def compiler_main(args):
         print("********* END OF VELA *********")
 
         # Grab the summary file
-        results = get_vela_summary(args.output_dir, model_name)
+        model_name = args.model_file.split("/")[-1].replace(".tflite", "")
+        summary_file = (
+            f"{args.output_dir}/{model_name}_summary_{args.system_config}.csv"
+        )
+        results = get_vela_summary(summary_file)
 
     elif args.compiler == "synai":
         # Generate synai optimized model
@@ -401,12 +485,14 @@ def sr100_model_compiler(**kwargs):
     """Python entry functions for the call"""
 
     # should derive defaults from argparse as well
+    if "model_file" not in kwargs:
+        assert False, "ERROR - you must specify a model-file to analyze"
     if "output_dir" not in kwargs:
         kwargs["output_dir"] = "."
-    if "namespace" not in kwargs:
-        kwargs["namespace"] = "model"
+    if "model_file_out" not in kwargs:
+        kwargs["model_file_out"] = "model"
     if "script" not in kwargs:
-        kwargs["script"] = ["model", "inout"]
+        kwargs["script"] = ["model"]
     if "compiler" not in kwargs:
         kwargs["compiler"] = "vela"
     if "model_loc" not in kwargs:
@@ -419,8 +505,10 @@ def sr100_model_compiler(**kwargs):
         kwargs["arena_cache_size"] = None
     if "verbose_all" not in kwargs:
         kwargs["verbose_all"] = None
+    if "verbose_cycle_estimate" not in kwargs:
+        kwargs["verbose_cycle_estimate"] = None
     if "system_config" not in kwargs:
-        kwargs["system_config"] = "Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs"
+        kwargs["system_config"] = "sr100_npu_400MHz_16GBFLASH"
 
     args = argparse.Namespace(**kwargs)
     return compiler_main(args)

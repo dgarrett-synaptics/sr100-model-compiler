@@ -10,6 +10,7 @@
 #include "{{header}}"
 {% endfor %}
 
+{% if tflite_loc == "sram" %}
 namespace {{namespace}} {
 
 {% for expression in expressions %}
@@ -32,4 +33,4 @@ size_t get_model_len(void)
 }
 
 } /* namespace {{namespace}} */
-
+{% endif %}
