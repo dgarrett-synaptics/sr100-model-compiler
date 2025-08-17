@@ -205,6 +205,7 @@ def process_args():
     parser.add_argument(
         "--arena-cache-size",
         type=int,
+        default=1500000,
         help="Sets the model arena cache size in bytes",
     )
     parser.add_argument(
@@ -309,9 +310,25 @@ def get_vela_summary(summary_file):
         print(f"{key} = {data[key]}")
     return data
 
+def sr100_default_config():
+    """ Gets the SR100 default config"""
+    default_config = {'flash_size' : 32e6,
+                      'sram_size' : 3e6,
+                      'core_clock' : 400e6
+                      }
+    return default_config
 
-def sr100_check_model(summary_file=None, results=None):
+def sr100_check_model(summary_file=None, results=None, config=None):
     """Check model on SR100 data file to see if it fits"""
+
+    # Override config if needed
+    if config is None:
+        default_config = sr100_default_config()
+    else:
+        default_config = config
+
+    # Get the success story
+    success = True
 
     # Reads the Vela results file
     if results:
@@ -319,77 +336,52 @@ def sr100_check_model(summary_file=None, results=None):
     else:
         results_dict = get_vela_summary(summary_file)
 
-    if results_dict["memory_mode"] == "Sram_Only":
-        print("Testing SRAM_ONLY")
-
-        success = True
-        # .cycles_npu = 5580933.0
-        # .cycles_sram_access = 1756251.0
-        # .cycles_dram_access = 0.0
-        # .cycles_on_chip_flash_access = 1452188.0
-        # .cycles_off_chip_flash_access = 0.0
-        # .cycles_total = 5581002.0
-
-        # inference_time = 0.013952505
-        # .sram_total_bytes = 12649152.0
-    else:
+    if results_dict is None:
         success = False
+        perf_data  =  {'sram_weights_size' : 0,
+                       'sram_tensor_size' : 0,
+                       'flash_weights_size' : 0,
+                       'sram_limit' : default_config['sram_size'],
+                       'flash_limit': default_config['flash_size'],
+                       'core_clock' : default_config['core_clock'],
+                       'inference_per_sec' : 0,
+                       'inference_time' : 0
+        }
 
+    else:
 
-#    experiment = default
-#    network = person_classification_sram(256x448)
-#    accelerator_configuration = Ethos_U55_128
-#    system_config = Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs
-#    memory_mode = Sram_Only
-#    core_clock = 400000000.0
-#    arena_cache_size = 4194304.0
-#    sram_bandwidth = 2.9802322387695312
-#    dram_bandwidth = 2.9802322387695312
-#    on_chip_flash_bandwidth = 2.9802322387695312
-#    off_chip_flash_bandwidth = 2.9802322387695312
-#    weights_storage_area = On-chip Flash
-#    feature_map_storage_area = SRAM
-#    inferences_per_second = 71.67171773097375
-#    batch_size = 1
-#    inference_time = 0.013952505
-#    passes_before_fusing = 90
-#    passes_after_fusing = 2
-#    sram_memory_used = 896.0
-#    dram_memory_used = 0.0
-#    on_chip_flash_memory_used = 1382.421875
-#    off_chip_flash_memory_used = 0.0
-#    total_original_weights = 1442352
-#    total_npu_encoded_weights = 1312128
-#    sram_feature_map_read_bytes = 9561924.0
-#    sram_feature_map_write_bytes = 3087228.0
-#    sram_weight_read_bytes = 0.0
-#    sram_weight_write_bytes = 0.0
-#    sram_total_bytes = 12649152.0
-#    dram_feature_map_read_bytes = 0.0
-#    dram_feature_map_write_bytes = 0.0
-#    dram_weight_read_bytes = 0.0
-#    dram_weight_write_bytes = 0.0
-#    dram_total_bytes = 0.0
-#    on_chip_flash_feature_map_read_bytes = 304.0
-#    on_chip_flash_feature_map_write_bytes = 0.0
-#    on_chip_flash_weight_read_bytes = 11569900.0
-#    on_chip_flash_weight_write_bytes = 0.0
-#    on_chip_flash_total_bytes = 11618528.0
-#    off_chip_flash_feature_map_read_bytes = 0.0
-#    off_chip_flash_feature_map_write_bytes = 0.0
-#    off_chip_flash_weight_read_bytes = 0.0
-#    off_chip_flash_weight_write_bytes = 0.0
-#    off_chip_flash_total_bytes = 0.0
-#    nn_macs = 495952900
-#    nn_tops = 0.0710915925133157
-#    cycles_npu = 5580933.0
-#    cycles_sram_access = 1756251.0
-#    cycles_dram_access = 0.0
-#    cycles_on_chip_flash_access = 1452188.0
-#    cycles_off_chip_flash_access = 0.0
-#    cycles_total = 5581002.0
+        #if results_dict["memory_mode"] == "Sram_Only":
+        #    print("Testing SRAM_ONLY")
+        #lese:
+        #    print("Testing FLASH")
 
-    return success
+        # Setup inference scalar based on the clock
+        inference_scalar =default_config['core_clock'] / float(results_dict['core_clock'])
+    
+        # Read out SRAM and FLASH usage (convert to bytes)
+        sram_weights_used = float(results_dict['on_chip_flash_memory_used'])*1024
+        sram_tensors_used = float(results_dict['sram_memory_used'])*1024
+        sram_used = sram_weights_used + sram_tensors_used
+        flash_weights_used = float(results_dict['off_chip_flash_memory_used'])*1024
+    
+        # Check memory limits
+        if flash_weights_used > default_config['flash_size']:
+            success = False
+        if sram_used > default_config['sram_size']:
+            success = False
+    
+        # Return performance data
+        perf_data  =  {'sram_weights_size' : sram_weights_used,
+                       'sram_tensor_size' : sram_tensors_used,
+                       'flash_weights_size' : flash_weights_used,
+                       'sram_limit' : default_config['sram_size'],
+                       'flash_limit': default_config['flash_size'],
+                       'core_clock' : default_config['core_clock'],
+                       'inference_per_sec' : float(results_dict['inferences_per_second']) / inference_scalar,
+                       'inference_time'   : float(results_dict['inference_time']) * inference_scalar
+        }
+
+    return success, perf_data
 
 def compiler_main(args): # pylint: disable=R0914
     """Main function with input args"""
@@ -499,7 +491,7 @@ def sr100_model_compiler(**kwargs):
     if "input" not in kwargs:
         kwargs["input"] = []
     if "arena_cache_size" not in kwargs:
-        kwargs["arena_cache_size"] = None
+        kwargs["arena_cache_size"] = 1500000
     if "verbose_all" not in kwargs:
         kwargs["verbose_all"] = None
     if "verbose_cycle_estimate" not in kwargs:
