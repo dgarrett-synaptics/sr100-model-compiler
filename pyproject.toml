@@ -22,8 +22,14 @@ dev = [
     "pytest"
 ]
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"sr100_model_compiler" = ["templates/*", "config/*"]
 
 [build-system]
 requires = ["setuptools", "wheel"]
