@@ -17,7 +17,11 @@ namespace {{namespace}} {
 {{expression}};
 {% endfor %}
 
+#if defined(__ARMCC_VERSION)
 static const uint8_t {{tflite_attribute}} nn_model[{{model_length}}] =
+#else
+static const uint8_t __attribute__((section("test_attribute"))) nn_model[{{model_length}}] =
+#endif
 {% for model_hex_line in model_data %}
 {{model_hex_line}}
 {% endfor %}
