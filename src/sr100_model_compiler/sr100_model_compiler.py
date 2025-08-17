@@ -145,93 +145,6 @@ def gen_inout_script(synai_ethosu_op_found, args, license_header):
             )
 
 
-def process_args():
-    """Parse command line arguments"""
-
-    parser = argparse.ArgumentParser(
-        description="Wrapper script to compile a TFLite model onto SR100 devices."
-    )
-    parser.add_argument(
-        "-m", "--model-file", type=str, help="Path to TFLite model file", required=True
-    )
-    parser.add_argument(
-        "--system-config",
-        type=str,
-        default="Ethos_U55_400MHz_SRAM_3.2_GBs_Flash_3.2_GBs",
-        help="Sets system config selection",
-    )
-    parser.add_argument(
-        "-o",
-        "--output-dir",
-        type=str,
-        help="Directory to output generated files",
-        default=".",
-    )
-    parser.add_argument(
-        "-n",
-        "--model-file-out",
-        type=str,
-        help="Name of the output cc file for the model",
-        default="model",
-    )
-    parser.add_argument(
-        "-s",
-        "--script",
-        type=str,
-        nargs="+",
-        choices=["model", "inout"],
-        default=["model"],
-        help="Choose specific scripts to run, if not provided then run all scripts",
-    )
-    parser.add_argument(
-        "-i", "--input", type=str, nargs="+", help="List of input npy/bin files"
-    )
-    parser.add_argument(
-        "-c",
-        "--compiler",
-        type=str,
-        choices=["vela", "synai", "none"],
-        help="Choose target compiler",
-        default="vela",
-    )
-    parser.add_argument(
-        "--model-loc",
-        type=str,
-        choices=["sram", "flash"],
-        help="Choose between in-memory SRAM or the model that is loaded from FLASH",
-        default="sram",
-        required=False,
-    )
-    parser.add_argument(
-        "--arena-cache-size",
-        type=int,
-        default=1500000,
-        help="Sets the model arena cache size in bytes",
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose-all",
-        action="store_true",
-        help="Turns on verbose all for the compiler",
-    )
-    parser.add_argument(
-        "--verbose-cycle-estimate",
-        action="store_true",
-        help="Turns on verbose cycle estimation",
-    )
-    parser.add_argument(
-        "-p",
-        "--optimize",
-        type=str,
-        choices=["Performance", "Size"],
-        help="Choose optimization Type",
-        default="Performance",
-        required=False,
-    )
-    args = parser.parse_args()
-    return args
-
-
 def setup_input(args):
     """Process inputs"""
 
@@ -288,13 +201,6 @@ def get_vela_summary(summary_file):
         list: A list of dictionaries, or an empty list if the file is not found.
     """
 
-    # Grab the summary file
-    # summary_files = glob.glob(
-    #    get_platform_path(f"{output_dir}/{model_name}_summary_*.csv")
-    # )
-    # assert len(summary_files) == 1, "Failed to find summary file"
-    # summary_file = summary_files[0]
-
     data = []
     try:
         with open(summary_file, "r", newline="", encoding="utf-8") as csvfile:
@@ -310,13 +216,12 @@ def get_vela_summary(summary_file):
         print(f"{key} = {data[key]}")
     return data
 
+
 def sr100_default_config():
-    """ Gets the SR100 default config"""
-    default_config = {'flash_size' : 32e6,
-                      'sram_size' : 3e6,
-                      'core_clock' : 400e6
-                      }
+    """Gets the SR100 default config"""
+    default_config = {"flash_size": 32e6, "sram_size": 3e6, "core_clock": 400e6}
     return default_config
+
 
 def sr100_check_model(summary_file=None, results=None, config=None):
     """Check model on SR100 data file to see if it fits"""
@@ -338,52 +243,55 @@ def sr100_check_model(summary_file=None, results=None, config=None):
 
     if results_dict is None:
         success = False
-        perf_data  =  {'sram_weights_size' : 0,
-                       'sram_tensor_size' : 0,
-                       'flash_weights_size' : 0,
-                       'sram_limit' : default_config['sram_size'],
-                       'flash_limit': default_config['flash_size'],
-                       'core_clock' : default_config['core_clock'],
-                       'inference_per_sec' : 0,
-                       'inference_time' : 0
+        perf_data = {
+            "sram_weights_size": 0,
+            "sram_tensor_size": 0,
+            "flash_weights_size": 0,
+            "sram_size_limit": default_config["sram_size"],
+            "sram_tensor_size_limit": 0,
+            "flash_size_limit": default_config["flash_size"],
+            "core_clock": default_config["core_clock"],
+            "inference_per_sec": 0,
+            "inference_time": 0,
         }
 
     else:
 
-        #if results_dict["memory_mode"] == "Sram_Only":
-        #    print("Testing SRAM_ONLY")
-        #lese:
-        #    print("Testing FLASH")
-
         # Setup inference scalar based on the clock
-        inference_scalar =default_config['core_clock'] / float(results_dict['core_clock'])
-    
+        inference_scalar = default_config["core_clock"] / float(
+            results_dict["core_clock"]
+        )
+
         # Read out SRAM and FLASH usage (convert to bytes)
-        sram_weights_used = float(results_dict['on_chip_flash_memory_used'])*1024
-        sram_tensors_used = float(results_dict['sram_memory_used'])*1024
+        sram_weights_used = float(results_dict["on_chip_flash_memory_used"]) * 1024
+        sram_tensors_used = float(results_dict["sram_memory_used"]) * 1024
         sram_used = sram_weights_used + sram_tensors_used
-        flash_weights_used = float(results_dict['off_chip_flash_memory_used'])*1024
-    
+        flash_weights_used = float(results_dict["off_chip_flash_memory_used"]) * 1024
+
         # Check memory limits
-        if flash_weights_used > default_config['flash_size']:
+        if flash_weights_used > default_config["flash_size"]:
             success = False
-        if sram_used > default_config['sram_size']:
+        if sram_used > default_config["sram_size"]:
             success = False
-    
+
         # Return performance data
-        perf_data  =  {'sram_weights_size' : sram_weights_used,
-                       'sram_tensor_size' : sram_tensors_used,
-                       'flash_weights_size' : flash_weights_used,
-                       'sram_limit' : default_config['sram_size'],
-                       'flash_limit': default_config['flash_size'],
-                       'core_clock' : default_config['core_clock'],
-                       'inference_per_sec' : float(results_dict['inferences_per_second']) / inference_scalar,
-                       'inference_time'   : float(results_dict['inference_time']) * inference_scalar
+        perf_data = {
+            "sram_weights_size": sram_weights_used,
+            "sram_tensor_size": sram_tensors_used,
+            "flash_weights_size": flash_weights_used,
+            "sram_size_limit": default_config["sram_size"],
+            "sram_tensor_size_limit": float(results_dict["arena_cache_size"]) * 1024,
+            "flash_size_limit": default_config["flash_size"],
+            "core_clock": default_config["core_clock"],
+            "inference_per_sec": float(results_dict["inferences_per_second"])
+            / inference_scalar,
+            "inference_time": float(results_dict["inference_time"]) * inference_scalar,
         }
 
     return success, perf_data
 
-def compiler_main(args): # pylint: disable=R0914
+
+def compiler_main(args):  # pylint: disable=R0914
     """Main function with input args"""
 
     results = None
@@ -470,43 +378,142 @@ def compiler_main(args): # pylint: disable=R0914
     return results
 
 
+def get_argparse_defaults(parser: argparse.ArgumentParser) -> dict:
+    """
+    Return a dictionary of all argparse defaults for the given parser.
+    """
+    return {
+        action.dest: action.default
+        for action in parser._actions  # pylint: disable=W0212
+        if action.dest != "help"
+    }
+
+
 def sr100_model_compiler(**kwargs):
     """Python entry functions for the call"""
 
-    # should derive defaults from argparse as well
-    if "model_file" not in kwargs:
-        assert False, "ERROR - you must specify a model-file to analyze"
-    if "output_dir" not in kwargs:
-        kwargs["output_dir"] = "."
-    if "model_file_out" not in kwargs:
-        kwargs["model_file_out"] = "model"
-    if "script" not in kwargs:
-        kwargs["script"] = ["model"]
-    if "compiler" not in kwargs:
-        kwargs["compiler"] = "vela"
-    if "model_loc" not in kwargs:
-        kwargs["model_loc"] = "sram"
-    if "optimize" not in kwargs:
-        kwargs["optimize"] = "Performance"
-    if "input" not in kwargs:
-        kwargs["input"] = []
-    if "arena_cache_size" not in kwargs:
-        kwargs["arena_cache_size"] = 1500000
-    if "verbose_all" not in kwargs:
-        kwargs["verbose_all"] = None
-    if "verbose_cycle_estimate" not in kwargs:
-        kwargs["verbose_cycle_estimate"] = None
-    if "system_config" not in kwargs:
-        kwargs["system_config"] = "sr100_npu_400MHz_16GBFLASH"
+    # Get default args
+    parser = get_argparser()
+    arg_defaults = get_argparse_defaults(parser)
+
+    # Update inputs with defaults
+    for key in arg_defaults.keys():
+        if key not in kwargs:
+            kwargs[key] = arg_defaults[key]
 
     args = argparse.Namespace(**kwargs)
     return compiler_main(args)
 
 
+def get_argparser():
+    """Parse command line arguments"""
+
+    parser = argparse.ArgumentParser(
+        description="Wrapper script to compile a TFLite model onto SR100 devices."
+    )
+    parser.add_argument(
+        "-m", "--model-file", type=str, help="Path to TFLite model file", required=True
+    )
+    parser.add_argument(
+        "--system-config",
+        type=str,
+        default="sr100_npu_400MHz_16GBFLASH",
+        help="Sets system config selection",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=str,
+        help="Directory to output generated files",
+        default=".",
+    )
+    parser.add_argument(
+        "-n",
+        "--model-file-out",
+        type=str,
+        help="Name of the output cc file for the model",
+        default="model",
+    )
+    parser.add_argument(
+        "-s",
+        "--script",
+        type=str,
+        nargs="+",
+        choices=["model", "inout"],
+        default=["model"],
+        help="Choose specific scripts to run, if not provided then run all scripts",
+    )
+    parser.add_argument(
+        "-i", "--input", type=str, nargs="+", help="List of input npy/bin files"
+    )
+    parser.add_argument(
+        "-c",
+        "--compiler",
+        type=str,
+        choices=["vela", "synai", "none"],
+        help="Choose target compiler",
+        default="vela",
+    )
+    parser.add_argument(
+        "--model-loc",
+        type=str,
+        choices=["sram", "flash"],
+        help="Choose between in-memory SRAM or the model that is loaded from FLASH",
+        default="sram",
+        required=False,
+    )
+    parser.add_argument(
+        "--arena-cache-size",
+        type=int,
+        default=1500000,
+        help="Sets the model arena cache size in bytes",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose-all",
+        action="store_true",
+        help="Turns on verbose all for the compiler",
+    )
+    parser.add_argument(
+        "--verbose-cycle-estimate",
+        action="store_true",
+        help="Turns on verbose cycle estimation",
+    )
+    parser.add_argument(
+        "-p",
+        "--optimize",
+        type=str,
+        choices=["Performance", "Size"],
+        help="Choose optimization Type",
+        default="Performance",
+        required=False,
+    )
+
+    return parser
+
+
 def main():
     """Main for the command line compiler"""
-    compiler_main(process_args())
-    return 0
+    parser = get_argparser()
+    args = parser.parse_args()
+
+    # Runs the vela compiler
+    results = compiler_main(args)
+
+    # Checks the SR100 mapping
+    success, perf_data = sr100_check_model(results=results)
+
+    # Reports the
+    if success:
+        print(f"Successfully mapped {args.model_file} onto sr100")
+        returncode = 0
+    else:
+        print(f"ERROR:: Failed to map {args.model_file} onto sr100")
+        returncode = 1
+    for key, value in perf_data.items():
+        print(f"   {key} = {value}")
+
+    return returncode
 
 
 if __name__ == "__main__":
