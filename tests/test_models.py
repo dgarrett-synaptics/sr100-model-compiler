@@ -125,8 +125,8 @@ def test_float_model(tmp_path):
     """Tests a float model that should not map"""
 
     # Get model name to build directory
-    model = 'tests/models/hello_world/hello_world_float.tflite'
-    model_name = 'hello_world_float'
+    model = "tests/models/hello_world/hello_world_float.tflite"
+    model_name = "hello_world_float"
     model_dir = model_name
 
     # Building output directory
@@ -135,14 +135,11 @@ def test_float_model(tmp_path):
 
     # Run the comparison
     results = sr100_model_compiler(
-        model_file=model,
-        output_dir=f"{out_dir}",
-        model_loc="sram"
+        model_file=model, output_dir=f"{out_dir}", model_loc="sram"
     )
-    cycles_npu = float(results['cycles_npu']) 
+    cycles_npu = float(results["cycles_npu"])
 
-    assert cycles_npu == 0.0, f'Failed to get 0 cycles in the NPU, found {cycles_npu}'
-
+    assert cycles_npu == 0.0, f"Failed to get 0 cycles in the NPU, found {cycles_npu}"
 
 
 if __name__ == "__main__":

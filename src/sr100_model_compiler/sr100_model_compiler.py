@@ -193,12 +193,12 @@ def sr100_get_compile_log(out_dir):
     """Get the Vela log text"""
 
     # Get the logs
-    logfiles = glob.glob(f'{out_dir}/*vela.log')
+    logfiles = glob.glob(f"{out_dir}/*vela.log")
 
     # return ext
-    log_text = ''
+    log_text = ""
     for logfile in logfiles:
-        with open(logfile, "r", encoding='utf-8') as f:
+        with open(logfile, "r", encoding="utf-8") as f:
             log_text = f.read()
 
     return log_text
@@ -292,7 +292,7 @@ def sr100_check_model(summary_file=None, results=None, config=None):
 
         # Return performance data
         perf_data = {
-            "cycles_npu": float(results_dict['cycles_npu']),
+            "cycles_npu": float(results_dict["cycles_npu"]),
             "sram_weights_size": sram_weights_used,
             "sram_tensor_size": sram_tensors_used,
             "flash_weights_size": flash_weights_used,
@@ -368,7 +368,9 @@ def compiler_main(args):  # pylint: disable=R0914
         print(vela_result.stdout.decode("utf-8"))
         print(vela_result.stderr.decode("utf-8"))
         # Store the logs as well
-        with open(f'{args.output_dir}/{model_name}_vela.log', 'w', encoding='utf-8') as fp:
+        with open(
+            f"{args.output_dir}/{model_name}_vela.log", "w", encoding="utf-8"
+        ) as fp:
             fp.write(vela_result.stdout.decode("utf-8"))
             fp.write(vela_result.stderr.decode("utf-8"))
         print("********* END OF VELA *********")
