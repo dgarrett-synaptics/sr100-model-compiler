@@ -1,6 +1,6 @@
 .PHONY: lint check_format format test check all
 
-all: check_format test
+all: check_format lint test
 
 lint:
 	pylint src/sr100_model_compiler/sr100_model_compiler.py

@@ -153,9 +153,9 @@ def setup_input(args):
         args.input = expand_wildcards(args.input)
 
     if args.model_loc == "sram":
-        memory_mode = "--memory-mode=Sram_Only"
+        memory_mode = "--memory-mode=model_sram"
     else:
-        memory_mode = "--memory-mode=Shared_Sram"
+        memory_mode = "--memory-mode=model_flash"
 
     # Determine which scripts to run
     scripts_to_run = []
@@ -187,6 +187,21 @@ def setup_input(args):
     new_model_file = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
 
     return args, memory_mode, scripts_to_run, new_model_file, model_name
+
+
+def sr100_get_compile_log(out_dir):
+    """Get the Vela log text"""
+
+    # Get the logs
+    logfiles = glob.glob(f"{out_dir}/*vela.log")
+
+    # return ext
+    log_text = ""
+    for logfile in logfiles:
+        with open(logfile, "r", encoding="utf-8") as f:
+            log_text = f.read()
+
+    return log_text
 
 
 def get_vela_summary(summary_file):
@@ -244,6 +259,7 @@ def sr100_check_model(summary_file=None, results=None, config=None):
     if results_dict is None:
         success = False
         perf_data = {
+            "cycles_npu": 0,
             "sram_weights_size": 0,
             "sram_tensor_size": 0,
             "flash_weights_size": 0,
@@ -276,6 +292,7 @@ def sr100_check_model(summary_file=None, results=None, config=None):
 
         # Return performance data
         perf_data = {
+            "cycles_npu": float(results_dict["cycles_npu"]),
             "sram_weights_size": sram_weights_used,
             "sram_tensor_size": sram_tensors_used,
             "flash_weights_size": flash_weights_used,
@@ -301,6 +318,11 @@ def compiler_main(args):  # pylint: disable=R0914
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
+
+    print(f"script_dir = {script_dir}")
+    files = glob.glob(f"{script_dir}/*")
+    for file in files:
+        print(f"file {file}")
 
     # Initialize Jinja2 environment
     env = Environment(
@@ -342,7 +364,15 @@ def compiler_main(args):  # pylint: disable=R0914
         vela_params.append(args.model_file)
 
         print("************ VELA ************")
-        subprocess.run(vela_params, check=True)
+        vela_result = subprocess.run(vela_params, capture_output=True, check=True)
+        print(vela_result.stdout.decode("utf-8"))
+        print(vela_result.stderr.decode("utf-8"))
+        # Store the logs as well
+        with open(
+            f"{args.output_dir}/{model_name}_vela.log", "w", encoding="utf-8"
+        ) as fp:
+            fp.write(vela_result.stdout.decode("utf-8"))
+            fp.write(vela_result.stderr.decode("utf-8"))
         print("********* END OF VELA *********")
 
         # Grab the summary file
@@ -417,7 +447,8 @@ def get_argparser():
     parser.add_argument(
         "--system-config",
         type=str,
-        default="sr100_npu_400MHz_16GBFLASH",
+        default="sr100_npu_400MHz_flash_66MHz",
+        choices=["sr100_npu_400MHz_flash_66MHz", "sr100_npu_400MHz_flash_100Hz"],
         help="Sets system config selection",
     )
     parser.add_argument(
@@ -465,7 +496,7 @@ def get_argparser():
     parser.add_argument(
         "--arena-cache-size",
         type=int,
-        default=1500000,
+        default=1536000,
         help="Sets the model arena cache size in bytes",
     )
     parser.add_argument(

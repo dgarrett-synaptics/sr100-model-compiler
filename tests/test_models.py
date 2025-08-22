@@ -121,6 +121,27 @@ def test_model_compiler(
     ), f"ERROR binfile mismathc {flash_bin_golden_file} with {flash_bin_file}"
 
 
+def test_float_model(tmp_path):
+    """Tests a float model that should not map"""
+
+    # Get model name to build directory
+    model = "tests/models/hello_world/hello_world_float.tflite"
+    model_name = "hello_world_float"
+    model_dir = model_name
+
+    # Building output directory
+    out_dir = tmp_path / model_dir
+    out_dir.mkdir(parents=True, exist_ok=True)  #
+
+    # Run the comparison
+    results = sr100_model_compiler(
+        model_file=model, output_dir=f"{out_dir}", model_loc="sram"
+    )
+    cycles_npu = float(results["cycles_npu"])
+
+    assert cycles_npu == 0.0, f"Failed to get 0 cycles in the NPU, found {cycles_npu}"
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -146,3 +167,6 @@ if __name__ == "__main__":
         test_model_compiler(
             Path(args.tmp_dir), model_v, model_loc_v, model_file_out_v, args.update
         )
+
+    # Test the float model as well
+    test_float_model(Path(args.tmp_dir))
