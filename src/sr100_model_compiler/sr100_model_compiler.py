@@ -153,9 +153,9 @@ def setup_input(args):
         args.input = expand_wildcards(args.input)
 
     if args.model_loc == "sram":
-        memory_mode = "--memory-mode=Sram_Only"
+        memory_mode = "--memory-mode=model_sram"
     else:
-        memory_mode = "--memory-mode=Shared_Sram"
+        memory_mode = "--memory-mode=model_flash"
 
     # Determine which scripts to run
     scripts_to_run = []
@@ -302,6 +302,11 @@ def compiler_main(args):  # pylint: disable=R0914
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
 
+    print(f"script_dir = {script_dir}")
+    files = glob.glob(f"{script_dir}/*")
+    for file in files:
+        print(f"file {file}")
+
     # Initialize Jinja2 environment
     env = Environment(
         loader=FileSystemLoader(script_dir / "templates"),
@@ -417,7 +422,8 @@ def get_argparser():
     parser.add_argument(
         "--system-config",
         type=str,
-        default="sr100_npu_400MHz_16GBFLASH",
+        default="sr100_npu_400MHz_flash_66MHz",
+        choices=["sr100_npu_400MHz_flash_66MHz", "sr100_npu_400MHz_flash_100Hz"],
         help="Sets system config selection",
     )
     parser.add_argument(
@@ -465,7 +471,7 @@ def get_argparser():
     parser.add_argument(
         "--arena-cache-size",
         type=int,
-        default=1500000,
+        default=1536000,
         help="Sets the model arena cache size in bytes",
     )
     parser.add_argument(
