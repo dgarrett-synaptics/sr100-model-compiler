@@ -10,9 +10,6 @@ loc_choices = {
     "flash": "MODEL_TFLITE_ATTRIBUTE_FLASH",  # QSPI FLASH
 }
 
-import datetime
-from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
 
 
 def generate_model_cpp(
@@ -25,6 +22,7 @@ def generate_model_cpp(
     env,
     license_header,
 ):
+    """ Generates a C++ source file that contains the TFLite model as a byte array."""
 
     tflite_loc_choice = loc_choices.get(tflite_loc, "MODEL_TFLITE_ATTRIBUTE")
 
