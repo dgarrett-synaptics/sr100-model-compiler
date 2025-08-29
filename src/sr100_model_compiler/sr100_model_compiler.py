@@ -377,30 +377,36 @@ def compiler_main(args):  # pylint: disable=R0914
         vela_params.append(args.model_file)
 
         print("************ VELA ************")
+        vela_log = ''
         try:
             vela_result = subprocess.run(vela_params, capture_output=True, check=True)
-            print(vela_result.stdout.decode("utf-8"))
-            print(vela_result.stderr.decode("utf-8"))
+            vela_log += vela_result.stdout.decode("utf-8")
+            vela_log += '\n'
+            vela_log += vela_result.stderr.decode("utf-8")
+
+
+            # Grab the summary file
+            model_name = args.model_file.split("/")[-1].replace(".tflite", "")
+            summary_file = (
+                f"{args.output_dir}/{model_name}_summary_{args.system_config}.csv"
+            )
+            results = get_vela_summary(summary_file)
+
         except subprocess.CalledProcessError as e:
-            print("Vela compilation failed:")
-            print(e.stdout.decode("utf-8"))
-            print(e.stderr.decode("utf-8"))
-            sys.exit(1)
+            print("Compilation failed:")
+            vela_log += e.stdout.decode("utf-8")
+            vela_log += '\n'
+            vela_log += e.stderr.decode("utf-8")
+
+        # print the log
+        print(vela_log)
 
         # Store the logs as well
         with open(
             f"{args.output_dir}/{model_name}_vela.log", "w", encoding="utf-8"
         ) as fp:
-            fp.write(vela_result.stdout.decode("utf-8"))
-            fp.write(vela_result.stderr.decode("utf-8"))
+            fp.write(vela_log)
         print("********* END OF VELA *********")
-
-        # Grab the summary file
-        model_name = args.model_file.split("/")[-1].replace(".tflite", "")
-        summary_file = (
-            f"{args.output_dir}/{model_name}_summary_{args.system_config}.csv"
-        )
-        results = get_vela_summary(summary_file)
 
     elif args.compiler == "synai":
         # Generate synai optimized model
@@ -539,7 +545,7 @@ def get_argparser():
         type=str,
         choices=["Performance", "Size"],
         help="Choose optimization Type",
-        default="Performance",
+        default="Size",
         required=False,
     )
 
