@@ -40,12 +40,24 @@ def expand_wildcards(file_paths):
 def gen_model_script(new_model_file, args, env, license_header):
     """Generate the model script outputs"""
 
+
+    if 'flash' in args.system_config:
+        model_loc = 'flash'
+    else:
+        model_loc = 'sram'
+
+    #memory_mode = "--memory-mode=memory_sr100"
+    #if args.model_loc == "sram":
+    #    memory_mode = "--memory-mode=memory_sr100"
+    #else:
+    #    memory_mode = "--memory-mode=model_flash"
+
     # Generate model C++ code
     generate_model_cpp(
         new_model_file,
         args.output_dir,
         args.model_file_out,
-        args.model_loc,
+        model_loc,
         env,
         license_header,
     )
@@ -152,10 +164,11 @@ def setup_input(args):
     if args.input:
         args.input = expand_wildcards(args.input)
 
-    if args.model_loc == "sram":
-        memory_mode = "--memory-mode=model_sram"
-    else:
-        memory_mode = "--memory-mode=model_flash"
+    memory_mode = "--memory-mode=memory_sr100"
+    #if args.model_loc == "sram":
+    #    memory_mode = "--memory-mode=memory_sr100"
+    #else:
+    #    memory_mode = "--memory-mode=model_flash"
 
     # Determine which scripts to run
     scripts_to_run = []
@@ -364,9 +377,16 @@ def compiler_main(args):  # pylint: disable=R0914
         vela_params.append(args.model_file)
 
         print("************ VELA ************")
-        vela_result = subprocess.run(vela_params, capture_output=True, check=True)
-        print(vela_result.stdout.decode("utf-8"))
-        print(vela_result.stderr.decode("utf-8"))
+        try:
+            vela_result = subprocess.run(vela_params, capture_output=True, check=True)
+            print(vela_result.stdout.decode("utf-8"))
+            print(vela_result.stderr.decode("utf-8"))
+        except subprocess.CalledProcessError as e:
+            print("Vela compilation failed:")
+            print(e.stdout.decode("utf-8"))
+            print(e.stderr.decode("utf-8"))
+            sys.exit(1)
+
         # Store the logs as well
         with open(
             f"{args.output_dir}/{model_name}_vela.log", "w", encoding="utf-8"
@@ -447,8 +467,11 @@ def get_argparser():
     parser.add_argument(
         "--system-config",
         type=str,
-        default="sr100_npu_400MHz_flash_66MHz",
-        choices=["sr100_npu_400MHz_flash_66MHz", "sr100_npu_400MHz_flash_100Hz"],
+        default="sr100_npu_400MHz_fast_sram",
+        choices=["sr100_npu_400MHz_fast_sram", 
+                 "sr100_npu_400MHz_weights_slow_sram",
+                 "sr100_npu_400MHz_weights_flash_66MHz",
+                 "sr100_npu_400MHz_weights_flash_100MHz"],
         help="Sets system config selection",
     )
     parser.add_argument(
