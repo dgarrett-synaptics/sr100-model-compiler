@@ -71,13 +71,13 @@ def gen_model_script(new_model_file, args, env, license_header):
         common_path,
         [os.path.basename(new_model_file)],
         args.output_dir,
-        args.model_file_out,
+        args.model_namespace,
         license_header,
     )
 
     # Open the source file in read mode and the destination file in append mode
     src_fn = get_platform_path(
-        args.output_dir + "/" + args.model_file_out + "_micro_mutable_op_resolver.hpp"
+        args.output_dir + "/" + args.model_namespace + "_micro_mutable_op_resolver.hpp"
     )
     dest_fn = get_platform_path(args.output_dir + "/" + args.model_file_out + ".cc")
     with (

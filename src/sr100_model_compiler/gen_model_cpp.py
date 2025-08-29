@@ -11,7 +11,6 @@ loc_choices = {
 }
 
 
-
 def generate_model_cpp(
     tflite_path,
     output_dir,
@@ -22,7 +21,7 @@ def generate_model_cpp(
     env,
     license_header,
 ):
-    """ Generates a C++ source file that contains the TFLite model as a byte array."""
+    """Generates a C++ source file that contains the TFLite model as a byte array."""
 
     tflite_loc_choice = loc_choices.get(tflite_loc, "MODEL_TFLITE_ATTRIBUTE")
 

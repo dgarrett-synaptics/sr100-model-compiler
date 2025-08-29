@@ -37,3 +37,4 @@ build-backend = "setuptools.build_meta"
 
 [project.scripts]
 sr100_model_compiler = "sr100_model_compiler.sr100_model_compiler:main"
+sr100_model_optimizer = "sr100_model_compiler.sr100_model_optimizer:main"
