@@ -58,6 +58,8 @@ def gen_model_script(new_model_file, args, env, license_header):
         args.output_dir,
         args.model_file_out,
         model_loc,
+        args.arena_cache_size,
+        args.model_namespace,
         env,
         license_header,
     )
@@ -164,7 +166,7 @@ def setup_input(args):
     if args.input:
         args.input = expand_wildcards(args.input)
 
-    memory_mode = "--memory-mode=memory_sr100"
+    #memory_mode = "--memory-mode=memory_sr100"
     #if args.model_loc == "sram":
     #    memory_mode = "--memory-mode=memory_sr100"
     #else:
@@ -199,7 +201,7 @@ def setup_input(args):
 
     new_model_file = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
 
-    return args, memory_mode, scripts_to_run, new_model_file, model_name
+    return args, scripts_to_run, new_model_file, model_name
 
 
 def sr100_get_compile_log(out_dir):
@@ -247,16 +249,22 @@ def get_vela_summary(summary_file):
 
 def sr100_default_config():
     """Gets the SR100 default config"""
-    default_config = {"flash_size": 32e6, "sram_size": 3e6, "core_clock": 400e6}
+    #default_config = {"vmem_size_limit": 1536000, "lpmem_size_limit" : 1536000,  "core_clock": 400000000}
+    default_config = {}
+    default_config["vmem_size_limit"] = 1536000
+    default_config["lpmem_size_limit"] = 1536000
+    default_config["core_clock"] = 400000000
+
     return default_config
 
-
-def sr100_check_model(summary_file=None, results=None, config=None):
+def sr100_check_model(args, summary_file=None, results=None, config=None):
     """Check model on SR100 data file to see if it fits"""
 
     # Override config if needed
     if config is None:
         default_config = sr100_default_config()
+        #print('default_config: ', default_config)
+        #print('core_clock: ', core_clock)
     else:
         default_config = config
 
@@ -269,54 +277,59 @@ def sr100_check_model(summary_file=None, results=None, config=None):
     else:
         results_dict = get_vela_summary(summary_file)
 
+    # Setup the default performance data
+    core_clock = int(default_config['core_clock'])
+    perf_data = {
+        "core_clock": core_clock,
+        "cycles_npu": 0,
+        "inference_per_sec": 0,
+        "inference_time": 0,
+        "weights_size": 0,
+        "arena_cache_size": args.arena_cache_size,
+        "vmem_size": 0,
+        "lpmem_size": 0,
+        "flash_size": 0,
+        "vmem_size_limit": default_config["vmem_size_limit"],
+        "lpmem_size_limit": default_config["lpmem_size_limit"],
+    }
+
     if results_dict is None:
         success = False
-        perf_data = {
-            "cycles_npu": 0,
-            "sram_weights_size": 0,
-            "sram_tensor_size": 0,
-            "flash_weights_size": 0,
-            "sram_size_limit": default_config["sram_size"],
-            "sram_tensor_size_limit": 0,
-            "flash_size_limit": default_config["flash_size"],
-            "core_clock": default_config["core_clock"],
-            "inference_per_sec": 0,
-            "inference_time": 0,
-        }
-
     else:
 
         # Setup inference scalar based on the clock
-        inference_scalar = default_config["core_clock"] / float(
+        inference_scalar = float(core_clock) / float(
             results_dict["core_clock"]
         )
 
-        # Read out SRAM and FLASH usage (convert to bytes)
-        sram_weights_used = float(results_dict["on_chip_flash_memory_used"]) * 1024
-        sram_tensors_used = float(results_dict["sram_memory_used"]) * 1024
-        sram_used = sram_weights_used + sram_tensors_used
-        flash_weights_used = float(results_dict["off_chip_flash_memory_used"]) * 1024
+        # Update performance data
+        perf_data["core_clock"] = core_clock
+        cycles_npu = int(float(results_dict["cycles_npu"]))
+        inferences_per_sec = float(results_dict["inferences_per_second"]) / inference_scalar
+        inference_time = float(results_dict["inference_time"]) * inference_scalar
+
+        perf_data["cycles_npu"] = cycles_npu
+        perf_data["inference_per_sec"] = inferences_per_sec
+        perf_data["inference_time"] = inference_time
+
+        perf_data["weights_size"] = int(float(results_dict["off_chip_flash_memory_used"]) * 1024)
+        perf_data["arena_cache_size"] = int(float(results_dict["arena_cache_size"]) * 1024)
+
+        # Check the mode
+        if args.system_config == "sr100_npu_400MHz_all_vmem":
+            perf_data["vmem_size"] = perf_data["weights_size"] + perf_data["arena_cache_size"]
+        elif args.system_config == "sr100_npu_400MHz_tensor_vmem_weights_lpmem":
+            perf_data["vmem_size"] = perf_data["arena_cache_size"]
+            perf_data["lpmem_size"] = perf_data["weights_size"]
+        else:
+            perf_data["vmem_size"] = perf_data["arena_cache_size"]
+            perf_data["flash_size"] = perf_data["weights_size"]
 
         # Check memory limits
-        if flash_weights_used > default_config["flash_size"]:
+        if perf_data["vmem_size"] > default_config["vmem_size_limit"]:
             success = False
-        if sram_used > default_config["sram_size"]:
+        if perf_data["lpmem_size"] > default_config["lpmem_size_limit"]:
             success = False
-
-        # Return performance data
-        perf_data = {
-            "cycles_npu": float(results_dict["cycles_npu"]),
-            "sram_weights_size": sram_weights_used,
-            "sram_tensor_size": sram_tensors_used,
-            "flash_weights_size": flash_weights_used,
-            "sram_size_limit": default_config["sram_size"],
-            "sram_tensor_size_limit": float(results_dict["arena_cache_size"]) * 1024,
-            "flash_size_limit": default_config["flash_size"],
-            "core_clock": default_config["core_clock"],
-            "inference_per_sec": float(results_dict["inferences_per_second"])
-            / inference_scalar,
-            "inference_time": float(results_dict["inference_time"]) * inference_scalar,
-        }
 
     return success, perf_data
 
@@ -327,7 +340,8 @@ def compiler_main(args):  # pylint: disable=R0914
     results = None
 
     synai_ethosu_op_found = 0
-    args, memory_mode, scripts_to_run, new_model_file, model_name = setup_input(args)
+    memory_mode = "--memory-mode=memory_sr100"
+    args, scripts_to_run, new_model_file, model_name = setup_input(args)
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
@@ -383,7 +397,6 @@ def compiler_main(args):  # pylint: disable=R0914
             vela_log += vela_result.stdout.decode("utf-8")
             vela_log += '\n'
             vela_log += vela_result.stderr.decode("utf-8")
-
 
             # Grab the summary file
             model_name = args.model_file.split("/")[-1].replace(".tflite", "")
@@ -473,11 +486,11 @@ def get_argparser():
     parser.add_argument(
         "--system-config",
         type=str,
-        default="sr100_npu_400MHz_fast_sram",
-        choices=["sr100_npu_400MHz_fast_sram", 
-                 "sr100_npu_400MHz_weights_slow_sram",
-                 "sr100_npu_400MHz_weights_flash_66MHz",
-                 "sr100_npu_400MHz_weights_flash_100MHz"],
+        default="sr100_npu_400MHz_all_vmem",
+        choices=["sr100_npu_400MHz_all_vmem",
+                 "sr100_npu_400MHz_tensor_vmem_weights_lpmem",
+                 "sr100_npu_400MHz_tensor_vmem_weights_flash66MHz",
+                 "sr100_npu_400MHz_tensor_vmem_weights_flash100MHz"],
         help="Sets system config selection",
     )
     parser.add_argument(
@@ -486,6 +499,12 @@ def get_argparser():
         type=str,
         help="Directory to output generated files",
         default=".",
+    )
+    parser.add_argument(
+        "--model-namespace",
+        type=str,
+        help="Sets the model namespace",
+        default="model",
     )
     parser.add_argument(
         "-n",
@@ -525,7 +544,7 @@ def get_argparser():
     parser.add_argument(
         "--arena-cache-size",
         type=int,
-        default=1536000,
+        default=1024000,
         help="Sets the model arena cache size in bytes",
     )
     parser.add_argument(
@@ -561,7 +580,7 @@ def main():
     results = compiler_main(args)
 
     # Checks the SR100 mapping
-    success, perf_data = sr100_check_model(results=results)
+    success, perf_data = sr100_check_model(args, results=results)
 
     # Reports the
     if success:
