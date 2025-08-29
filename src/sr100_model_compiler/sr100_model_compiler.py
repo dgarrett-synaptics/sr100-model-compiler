@@ -40,16 +40,15 @@ def expand_wildcards(file_paths):
 def gen_model_script(new_model_file, args, env, license_header):
     """Generate the model script outputs"""
 
-
-    if 'flash' in args.system_config:
-        model_loc = 'flash'
+    if "flash" in args.system_config:
+        model_loc = "flash"
     else:
-        model_loc = 'sram'
+        model_loc = "sram"
 
-    #memory_mode = "--memory-mode=memory_sr100"
-    #if args.model_loc == "sram":
+    # memory_mode = "--memory-mode=memory_sr100"
+    # if args.model_loc == "sram":
     #    memory_mode = "--memory-mode=memory_sr100"
-    #else:
+    # else:
     #    memory_mode = "--memory-mode=model_flash"
 
     # Generate model C++ code
@@ -166,10 +165,10 @@ def setup_input(args):
     if args.input:
         args.input = expand_wildcards(args.input)
 
-    #memory_mode = "--memory-mode=memory_sr100"
-    #if args.model_loc == "sram":
+    # memory_mode = "--memory-mode=memory_sr100"
+    # if args.model_loc == "sram":
     #    memory_mode = "--memory-mode=memory_sr100"
-    #else:
+    # else:
     #    memory_mode = "--memory-mode=model_flash"
 
     # Determine which scripts to run
@@ -249,7 +248,7 @@ def get_vela_summary(summary_file):
 
 def sr100_default_config():
     """Gets the SR100 default config"""
-    #default_config = {"vmem_size_limit": 1536000, "lpmem_size_limit" : 1536000,  "core_clock": 400000000}
+    # default_config = {"vmem_size_limit": 1536000, "lpmem_size_limit" : 1536000,  "core_clock": 400000000}
     default_config = {}
     default_config["vmem_size_limit"] = 1536000
     default_config["lpmem_size_limit"] = 1536000
@@ -257,14 +256,15 @@ def sr100_default_config():
 
     return default_config
 
+
 def sr100_check_model(args, summary_file=None, results=None, config=None):
     """Check model on SR100 data file to see if it fits"""
 
     # Override config if needed
     if config is None:
         default_config = sr100_default_config()
-        #print('default_config: ', default_config)
-        #print('core_clock: ', core_clock)
+        # print('default_config: ', default_config)
+        # print('core_clock: ', core_clock)
     else:
         default_config = config
 
@@ -278,7 +278,7 @@ def sr100_check_model(args, summary_file=None, results=None, config=None):
         results_dict = get_vela_summary(summary_file)
 
     # Setup the default performance data
-    core_clock = int(default_config['core_clock'])
+    core_clock = int(default_config["core_clock"])
     perf_data = {
         "core_clock": core_clock,
         "cycles_npu": 0,
@@ -298,26 +298,32 @@ def sr100_check_model(args, summary_file=None, results=None, config=None):
     else:
 
         # Setup inference scalar based on the clock
-        inference_scalar = float(core_clock) / float(
-            results_dict["core_clock"]
-        )
+        inference_scalar = float(core_clock) / float(results_dict["core_clock"])
 
         # Update performance data
         perf_data["core_clock"] = core_clock
         cycles_npu = int(float(results_dict["cycles_npu"]))
-        inferences_per_sec = float(results_dict["inferences_per_second"]) / inference_scalar
+        inferences_per_sec = (
+            float(results_dict["inferences_per_second"]) / inference_scalar
+        )
         inference_time = float(results_dict["inference_time"]) * inference_scalar
 
         perf_data["cycles_npu"] = cycles_npu
         perf_data["inference_per_sec"] = inferences_per_sec
         perf_data["inference_time"] = inference_time
 
-        perf_data["weights_size"] = int(float(results_dict["off_chip_flash_memory_used"]) * 1024)
-        perf_data["arena_cache_size"] = int(float(results_dict["arena_cache_size"]) * 1024)
+        perf_data["weights_size"] = int(
+            float(results_dict["off_chip_flash_memory_used"]) * 1024
+        )
+        perf_data["arena_cache_size"] = int(
+            float(results_dict["arena_cache_size"]) * 1024
+        )
 
         # Check the mode
         if args.system_config == "sr100_npu_400MHz_all_vmem":
-            perf_data["vmem_size"] = perf_data["weights_size"] + perf_data["arena_cache_size"]
+            perf_data["vmem_size"] = (
+                perf_data["weights_size"] + perf_data["arena_cache_size"]
+            )
         elif args.system_config == "sr100_npu_400MHz_tensor_vmem_weights_lpmem":
             perf_data["vmem_size"] = perf_data["arena_cache_size"]
             perf_data["lpmem_size"] = perf_data["weights_size"]
@@ -391,11 +397,11 @@ def compiler_main(args):  # pylint: disable=R0914
         vela_params.append(args.model_file)
 
         print("************ VELA ************")
-        vela_log = ''
+        vela_log = ""
         try:
             vela_result = subprocess.run(vela_params, capture_output=True, check=True)
             vela_log += vela_result.stdout.decode("utf-8")
-            vela_log += '\n'
+            vela_log += "\n"
             vela_log += vela_result.stderr.decode("utf-8")
 
             # Grab the summary file
@@ -408,7 +414,7 @@ def compiler_main(args):  # pylint: disable=R0914
         except subprocess.CalledProcessError as e:
             print("Compilation failed:")
             vela_log += e.stdout.decode("utf-8")
-            vela_log += '\n'
+            vela_log += "\n"
             vela_log += e.stderr.decode("utf-8")
 
         # print the log
@@ -487,10 +493,12 @@ def get_argparser():
         "--system-config",
         type=str,
         default="sr100_npu_400MHz_all_vmem",
-        choices=["sr100_npu_400MHz_all_vmem",
-                 "sr100_npu_400MHz_tensor_vmem_weights_lpmem",
-                 "sr100_npu_400MHz_tensor_vmem_weights_flash66MHz",
-                 "sr100_npu_400MHz_tensor_vmem_weights_flash100MHz"],
+        choices=[
+            "sr100_npu_400MHz_all_vmem",
+            "sr100_npu_400MHz_tensor_vmem_weights_lpmem",
+            "sr100_npu_400MHz_tensor_vmem_weights_flash66MHz",
+            "sr100_npu_400MHz_tensor_vmem_weights_flash100MHz",
+        ],
         help="Sets system config selection",
     )
     parser.add_argument(

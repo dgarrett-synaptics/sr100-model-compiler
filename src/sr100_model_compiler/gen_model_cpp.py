@@ -16,7 +16,14 @@ from jinja2 import Environment, FileSystemLoader
 
 
 def generate_model_cpp(
-    tflite_path, output_dir, model_file, tflite_loc, arena_cache_size, namespace, env, license_header
+    tflite_path,
+    output_dir,
+    model_file,
+    tflite_loc,
+    arena_cache_size,
+    namespace,
+    env,
+    license_header,
 ):
 
     tflite_loc_choice = loc_choices.get(tflite_loc, "MODEL_TFLITE_ATTRIBUTE")
@@ -30,7 +37,7 @@ def generate_model_cpp(
     cpp_filename = (output_dir / (model_file + ".cc")).resolve()
     if platform.system() == "Windows":
         print(
-            f"++ Converting {Path(tflite_path).name} to {output_dir}\{cpp_filename.name}"
+            f"++ Converting {Path(tflite_path).name} to {output_dir}\\{cpp_filename.name}"
         )
     else:
         print(
