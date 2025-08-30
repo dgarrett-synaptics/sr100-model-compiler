@@ -31,7 +31,7 @@ def model_optimizer_search(args):
         # Determine the system configuration
         if total_size <= args.vmem_size_limit:
             system_config = "sr100_npu_400MHz_all_vmem"
-        elif total_size <= (args.vmem_size_limit + args.lpmem_size_limit):
+        elif weights_size <= args.lpmem_size_limit:
             system_config = "sr100_npu_400MHz_tensor_vmem_weights_lpmem"
         else:
             system_config = "sr100_npu_400MHz_tensor_vmem_weights_flash66MHz"
