@@ -8,6 +8,7 @@ from .sr100_model_compiler import (
     get_args_from_call,
 )
 
+
 def model_optimizer_search(args):
     """Searches for the model that fits"""
 
@@ -79,7 +80,7 @@ def get_optimizer_argparser():
 
 def main():
     """Main for the command line compiler"""
-    parser = get_argparser()
+    parser = get_optimizer_argparser()
     args = parser.parse_args()
 
     # Checks the SR100 mapping
