@@ -1,6 +1,6 @@
 [project]
 name = "sr100-model-compiler"
-version = "0.3.0"
+version = "0.4.0"
 description = "Shortened SDK model targeting package"
 authors = [{ name = "Synaptics Inc", email = "support@synaptics.com" }]
 readme = "README.md"
