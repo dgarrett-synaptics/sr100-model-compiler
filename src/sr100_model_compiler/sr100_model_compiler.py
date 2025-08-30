@@ -41,22 +41,16 @@ def gen_model_script(new_model_file, args, env, license_header):
     """Generate the model script outputs"""
 
     if "flash" in args.system_config:
-        model_loc = "flash"
+        weights_loc = "flash"
     else:
-        model_loc = "sram"
-
-    # memory_mode = "--memory-mode=memory_sr100"
-    # if args.model_loc == "sram":
-    #    memory_mode = "--memory-mode=memory_sr100"
-    # else:
-    #    memory_mode = "--memory-mode=model_flash"
+        weights_loc = "sram"
 
     # Generate model C++ code
     generate_model_cpp(
         new_model_file,
         args.output_dir,
         args.model_file_out,
-        model_loc,
+        weights_loc,
         args.arena_cache_size,
         args.model_namespace,
         env,
@@ -165,11 +159,13 @@ def setup_input(args):
     if args.input:
         args.input = expand_wildcards(args.input)
 
-    # memory_mode = "--memory-mode=memory_sr100"
-    # if args.model_loc == "sram":
-    #    memory_mode = "--memory-mode=memory_sr100"
-    # else:
-    #    memory_mode = "--memory-mode=model_flash"
+    # Detect the model location
+    if args.system_config == "sr100_npu_400MHz_all_vmem":
+        model_loc = "vmem"
+    elif args.system_config == "sr100_npu_400MHz_tensor_vmem_weights_lpmem":
+        model_loc = "lpmem"
+    else:
+        model_loc = "flash"
 
     # Determine which scripts to run
     scripts_to_run = []
@@ -200,7 +196,7 @@ def setup_input(args):
 
     new_model_file = get_platform_path(args.output_dir + "/" + new_tflite_file_name)
 
-    return args, scripts_to_run, new_model_file, model_name
+    return args, scripts_to_run, new_model_file, model_name, model_loc
 
 
 def sr100_get_compile_log(out_dir):
@@ -246,96 +242,78 @@ def get_vela_summary(summary_file):
     return data
 
 
-def sr100_default_config():
-    """Gets the SR100 default config"""
-    # default_config = {"vmem_size_limit": 1536000, "lpmem_size_limit" : 1536000,  "core_clock": 400000000}
-    default_config = {}
-    default_config["vmem_size_limit"] = 1536000
-    default_config["lpmem_size_limit"] = 1536000
-    default_config["core_clock"] = 400000000
+# def sr100_default_config():
+#    """Gets the SR100 default config"""
+#    # default_config = {"vmem_size_limit": 1536000, "lpmem_size_limit" : 1536000,  "core_clock": 400000000}
+#    default_config = {}
+#    default_config["vmem_size_limit"] = 1536000
+#    default_config["lpmem_size_limit"] = 1536000
+#    default_config["core_clock"] = 400000000
+#
+#    return default_config
 
-    return default_config
 
-
-def sr100_check_model(args, summary_file=None, results=None, config=None):
+def sr100_check_model(results_dict):
     """Check model on SR100 data file to see if it fits"""
 
-    # Override config if needed
-    if config is None:
-        default_config = sr100_default_config()
-        # print('default_config: ', default_config)
-        # print('core_clock: ', core_clock)
-    else:
-        default_config = config
+    # check for a bad compile
+    if results_dict is None:
+        return False, None
+    elif results_dict["cycles_npu"] == 0:
+        return False, results_dict
 
     # Get the success story
     success = True
 
-    # Reads the Vela results file
-    if results:
-        results_dict = results
-    else:
-        results_dict = get_vela_summary(summary_file)
-
     # Setup the default performance data
-    core_clock = int(default_config["core_clock"])
+    core_clock = int(float(results_dict["core_clock"]))
     perf_data = {
         "core_clock": core_clock,
         "cycles_npu": 0,
         "inference_per_sec": 0,
         "inference_time": 0,
         "weights_size": 0,
-        "arena_cache_size": args.arena_cache_size,
+        "arena_cache_size": 0,
         "vmem_size": 0,
         "lpmem_size": 0,
         "flash_size": 0,
-        "vmem_size_limit": default_config["vmem_size_limit"],
-        "lpmem_size_limit": default_config["lpmem_size_limit"],
+        "vmem_size_limit": results_dict["vmem_size_limit"],
+        "lpmem_size_limit": results_dict["lpmem_size_limit"],
+        "model_loc": results_dict["model_loc"],
+        "vela_log": results_dict["vela_log"],
     }
 
-    if results_dict is None:
-        success = False
+    # Update performance data
+    cycles_npu = int(float(results_dict["cycles_npu"]))
+    inferences_per_sec = float(results_dict["inferences_per_second"])
+    inference_time = float(results_dict["inference_time"])
+
+    perf_data["cycles_npu"] = cycles_npu
+    perf_data["inference_per_sec"] = inferences_per_sec
+    perf_data["inference_time"] = inference_time
+
+    perf_data["weights_size"] = int(
+        float(results_dict["off_chip_flash_memory_used"]) * 1024
+    )
+    perf_data["arena_cache_size"] = int(float(results_dict["arena_cache_size"]) * 1024)
+
+    # Check the mode
+    if results_dict["model_loc"] == "vmem":
+        perf_data["vmem_size"] = (
+            perf_data["weights_size"] + perf_data["arena_cache_size"]
+        )
+    elif results_dict["model_loc"] == "lpmem":
+        perf_data["vmem_size"] = perf_data["arena_cache_size"]
+        perf_data["lpmem_size"] = perf_data["weights_size"]
     else:
+        perf_data["vmem_size"] = perf_data["arena_cache_size"]
+        perf_data["flash_size"] = perf_data["weights_size"]
 
-        # Setup inference scalar based on the clock
-        inference_scalar = float(core_clock) / float(results_dict["core_clock"])
-
-        # Update performance data
-        perf_data["core_clock"] = core_clock
-        cycles_npu = int(float(results_dict["cycles_npu"]))
-        inferences_per_sec = (
-            float(results_dict["inferences_per_second"]) / inference_scalar
-        )
-        inference_time = float(results_dict["inference_time"]) * inference_scalar
-
-        perf_data["cycles_npu"] = cycles_npu
-        perf_data["inference_per_sec"] = inferences_per_sec
-        perf_data["inference_time"] = inference_time
-
-        perf_data["weights_size"] = int(
-            float(results_dict["off_chip_flash_memory_used"]) * 1024
-        )
-        perf_data["arena_cache_size"] = int(
-            float(results_dict["arena_cache_size"]) * 1024
-        )
-
-        # Check the mode
-        if args.system_config == "sr100_npu_400MHz_all_vmem":
-            perf_data["vmem_size"] = (
-                perf_data["weights_size"] + perf_data["arena_cache_size"]
-            )
-        elif args.system_config == "sr100_npu_400MHz_tensor_vmem_weights_lpmem":
-            perf_data["vmem_size"] = perf_data["arena_cache_size"]
-            perf_data["lpmem_size"] = perf_data["weights_size"]
-        else:
-            perf_data["vmem_size"] = perf_data["arena_cache_size"]
-            perf_data["flash_size"] = perf_data["weights_size"]
-
-        # Check memory limits
-        if perf_data["vmem_size"] > default_config["vmem_size_limit"]:
-            success = False
-        if perf_data["lpmem_size"] > default_config["lpmem_size_limit"]:
-            success = False
+    # Check memory limits
+    if perf_data["vmem_size"] > results_dict["vmem_size_limit"]:
+        success = False
+    if perf_data["lpmem_size"] > results_dict["lpmem_size_limit"]:
+        success = False
 
     return success, perf_data
 
@@ -347,7 +325,7 @@ def compiler_main(args):  # pylint: disable=R0914
 
     synai_ethosu_op_found = 0
     memory_mode = "--memory-mode=memory_sr100"
-    args, scripts_to_run, new_model_file, model_name = setup_input(args)
+    args, scripts_to_run, new_model_file, model_name, model_loc = setup_input(args)
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
@@ -371,10 +349,8 @@ def compiler_main(args):  # pylint: disable=R0914
         year=datetime.datetime.now().year,
     )
 
-    print(f"memory_mode = {memory_mode}")
     if args.compiler == "vela":
 
-        # arm_config = get_platform_path("Arm/vela.ini")
         arm_config = get_platform_path(f"{script_dir}/config/sr100_system_config.ini")
 
         # Generate vela optimized model
@@ -410,14 +386,19 @@ def compiler_main(args):  # pylint: disable=R0914
                 f"{args.output_dir}/{model_name}_summary_{args.system_config}.csv"
             )
             results = get_vela_summary(summary_file)
+            results["vmem_size_limit"] = args.vmem_size_limit
+            results["lpmem_size_limit"] = args.lpmem_size_limit
+            results["model_loc"] = model_loc
 
         except subprocess.CalledProcessError as e:
             print("Compilation failed:")
+            results["cycles_npu"] = 0
             vela_log += e.stdout.decode("utf-8")
             vela_log += "\n"
             vela_log += e.stderr.decode("utf-8")
 
         # print the log
+        results["vela_log"] = vela_log
         print(vela_log)
 
         # Store the logs as well
@@ -441,14 +422,15 @@ def compiler_main(args):  # pylint: disable=R0914
     else:
         print("******* No Compilation *******")
 
-    # Run the selected scripts
-    for script in scripts_to_run:
-        if script == "model":
-            synai_ethosu_op_found = gen_model_script(
-                new_model_file, args, env, license_header
-            )
-        elif script == "inout":
-            gen_inout_script(synai_ethosu_op_found, args, license_header)
+    # Run the selected scripts if it compiled
+    if results["cycles_npu"]:
+        for script in scripts_to_run:
+            if script == "model":
+                synai_ethosu_op_found = gen_model_script(
+                    new_model_file, args, env, license_header
+                )
+            elif script == "inout":
+                gen_inout_script(synai_ethosu_op_found, args, license_header)
 
     return results
 
@@ -502,6 +484,18 @@ def get_argparser():
         help="Sets system config selection",
     )
     parser.add_argument(
+        "--vmem-size-limit",
+        type=int,
+        default=1536000,
+        help="Sets limit for vmem",
+    )
+    parser.add_argument(
+        "--lpmem-size-limit",
+        type=int,
+        default=1536000,
+        help="Sets limit for lpmem (operates at 1/4 speed of vmem)",
+    )
+    parser.add_argument(
         "-o",
         "--output-dir",
         type=str,
@@ -542,14 +536,6 @@ def get_argparser():
         default="vela",
     )
     parser.add_argument(
-        "--model-loc",
-        type=str,
-        choices=["sram", "flash"],
-        help="Choose between in-memory SRAM or the model that is loaded from FLASH",
-        default="sram",
-        required=False,
-    )
-    parser.add_argument(
         "--arena-cache-size",
         type=int,
         default=1024000,
@@ -588,7 +574,7 @@ def main():
     results = compiler_main(args)
 
     # Checks the SR100 mapping
-    success, perf_data = sr100_check_model(args, results=results)
+    success, perf_data = sr100_check_model(results)
 
     # Reports the
     if success:

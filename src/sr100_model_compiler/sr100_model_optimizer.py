@@ -2,7 +2,6 @@
 
 import argparse
 import tempfile
-import os
 from .sr100_model_compiler import sr100_model_compiler, sr100_check_model
 
 
@@ -23,14 +22,13 @@ def model_optimizer_search(args):
     # Using TemporaryDirectory as a context manager for automatic cleanup
     results = None
     with tempfile.TemporaryDirectory() as tmpdirname:
-        print(f"Temporary directory created at: {tmpdirname}")
 
         # You can perform operations within the temporary directory
         output_dir = f"{tmpdirname}"
 
         # Gets minimum arena cache size
         results_size = sr100_model_compiler(
-            model_file=args.model_file, arena_cache_size=3092000, output_dir=output_dir
+            model_file=args.model_file, arena_cache_size=3072000, output_dir=output_dir
         )
         # Analyze the results
         weights_size = int(float(results_size["off_chip_flash_memory_used"]) * 1024)
@@ -54,10 +52,9 @@ def model_optimizer_search(args):
         )
 
     # Checks the SR100 mapping
-    # success, perf_data = sr100_check_model(args, results=results)
-    print(results)
+    success, perf_data = sr100_check_model(results)
 
-    return True, results
+    return success, perf_data
 
 
 def sr100_model_optimizer(**kwargs):
@@ -100,7 +97,11 @@ def main():
     args = parser.parse_args()
 
     # Checks the SR100 mapping
-    success, _ = model_optimizer_search(args)
+    success, perf_data = model_optimizer_search(args)
+
+    # Print performance data
+    for key, value in perf_data.items():
+        print(f"{key}: {value}")
 
     # Fine tune the model
     if success:
