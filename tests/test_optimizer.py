@@ -36,7 +36,7 @@ model_test_list = [
     model_test_list,
 )
 def test_model_optimizer(
-    model_file, vmem_size_limit, lpmem_size_limit, model_loc, sucess_expect
+    model_file, vmem_size_limit, lpmem_size_limit, model_loc, success_expect
 ):
     """builds a model and tests outputs"""
 
@@ -47,7 +47,7 @@ def test_model_optimizer(
         lpmem_size_limit=lpmem_size_limit,
     )
 
-    assert success == sucess_expect, f"Optimization failed for {model_file}"
+    assert success == success_expect, f"Optimization failed for {model_file}"
     assert (
         results["model_loc"] == model_loc
     ), f'{model_file} - Expected model location {model_loc}, got {results["model_loc"]}'

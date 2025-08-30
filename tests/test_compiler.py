@@ -5,100 +5,115 @@ import filecmp
 import argparse
 from pathlib import Path
 import pytest
+from sr100_model_compiler import sr100_model_compiler, call_shell_cmd
 
-# from sr100_model_compiler import shell_cmd
-from sr100_model_compiler import sr100_model_compiler
 
 model_test_list = [
-    ("tests/models/hello_world/hello_world.tflite", "sram", "model"),
+    (
+        "tests/models/hello_world/hello_world.tflite",
+        "sr100_npu_400MHz_all_vmem",
+        "model",
+    ),
     (
         "tests/models/uc_person_classification/person_classification_256x448.tflite",
-        "sram",
+        "sr100_npu_400MHz_all_vmem",
         "model_wqvga",
     ),
     (
         "tests/models/uc_person_classification/person_classification_448x640.tflite",
-        "flash",
+        "sr100_npu_400MHz_tensor_vmem_weights_lpmem",
         "model_vga",
     ),
     (
         "tests/models/uc_person_detection/person_detection_256x480.tflite",
-        "sram",
+        "sr100_npu_400MHz_tensor_vmem_weights_flash66MHz",
         "model_wqvga",
     ),
     (
         "tests/models/uc_person_detection/person_detection_480x640.tflite",
-        "flash",
+        "sr100_npu_400MHz_tensor_vmem_weights_flash100MHz",
         "model_vga",
     ),
     (
         "tests/models/uc_person_pose_detection/person_pose_detection_256x480.tflite",
-        "sram",
+        "sr100_npu_400MHz_tensor_vmem_weights_lpmem",
         "model_wqvga",
     ),
     (
         "tests/models/uc_person_pose_detection/person_pose_detection_480x640.tflite",
-        "flash",
+        "sr100_npu_400MHz_tensor_vmem_weights_lpmem",
         "model_vga",
     ),
     (
         "tests/models/uc_person_segmentation/person_segmentation_256x480.tflite",
-        "sram",
+        "sr100_npu_400MHz_tensor_vmem_weights_lpmem",
         "model_wqvga",
     ),
     (
         "tests/models/uc_person_segmentation/person_segmentation_480x640.tflite",
-        "flash",
+        "sr100_npu_400MHz_tensor_vmem_weights_lpmem",
         "model_vga",
     ),
 ]
 
 
-def test_shell_cmd():
+def test_shell_cmd(tmp_path):
     """Test that python + shell command are the same outputs"""
-    #    success, _ = shell_cmd(
-    #        f"sr100_model_compiler -m tests/models/{model}.tflite"
-    #        f" --output-dir {out_dir} --model-loc {model_loc}"
-    #    )
-    #    print(f"success = {success}")
-    assert True
+
+    model, system_config, model_file_out = model_test_list[0]
+    model_name = os.path.basename(model).replace(".tflite", "")
+
+    # Building output directory
+    out_dir = tmp_path
+
+    # Run the shell command
+    success, vela_log = call_shell_cmd(
+        f"sr100_model_compiler -m {model}"
+        f" --output-dir {out_dir}"
+        f" --system-config {system_config}"
+        f" --model-file-out {model_file_out}"
+    )
+    assert success is True, f"Failed to run sr100_model_compiler command: {vela_log}"
+    # print(f"success = {success}")
+    print(f"vela_log = {vela_log}")
+
+    # Assert the model space file exists
+    cc_file = f"{out_dir}/{model_file_out}.cc"
+    assert os.path.exists(cc_file), f"Failed to find {cc_file}"
+
+    # Read vela bytes
+    flash_bin_golden_file = model.replace(".tflite", ".bin")
+    flash_bin_file = f"{out_dir}/{model_name}.bin"
+
+    # Compares the binary files
+    assert filecmp.cmp(
+        flash_bin_golden_file, flash_bin_file
+    ), f"ERROR binfile mismathc {flash_bin_golden_file} with {flash_bin_file}"
 
 
 @pytest.mark.parametrize(
-    "model, model_loc, model_file_out",
+    "model, system_config, model_file_out",
     model_test_list,
 )
 def test_model_compiler(
-    tmp_path, model, model_loc, model_file_out, update_bin_file=False
+    tmp_path, model, system_config, model_file_out, update_bin_file=False
 ):
     """builds a model and tests outputs"""
 
     # Get model name to build directory
-    if "/" in model:
-        model_name = model.split("/")[-1].replace(".tflite", "")
-    else:
-        model_name = model.replace(".tflite", "")
-    model_dir = f"{model_name}_{model_loc}"
+    model_name = os.path.basename(model).replace(".tflite", "")
 
     # Building output directory
-    out_dir = tmp_path / model_dir
-    out_dir.mkdir(parents=True, exist_ok=True)  #
-    print(f"Building temp output in {out_dir}")
+    out_dir = f"{tmp_path}"
 
     # Run the comparison
     results = sr100_model_compiler(
         model_file=model,
         output_dir=f"{out_dir}",
-        model_loc=f"{model_loc}",
+        system_config=system_config,
         model_file_out=model_file_out,
     )
     print(results)
-
-    # default_config = sr100_default_config()
-    # success, perf_data = sr100_check_model(results=results, config=default_config)
-    # print(f"Model success = {success}")
-    # for key, value in perf_data.items():
-    #    print(f"   {key} = {value}")
 
     # Assert the model space file exists
     cc_file = f"{out_dir}/{model_file_out}.cc"
@@ -163,9 +178,9 @@ if __name__ == "__main__":
 
     # Run all the tests and update if needed
     for model_test in model_test_list:
-        model_v, model_loc_v, model_file_out_v = model_test
+        model_v, system_config_v, model_file_out_v = model_test
         test_model_compiler(
-            Path(args.tmp_dir), model_v, model_loc_v, model_file_out_v, args.update
+            Path(args.tmp_dir), model_v, system_config_v, model_file_out_v, args.update
         )
 
     # Test the float model as well
