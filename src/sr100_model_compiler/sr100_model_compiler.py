@@ -259,7 +259,7 @@ def sr100_check_model(results_dict):
     perf_data = {
         "core_clock": core_clock,
         "cycles_npu": 0,
-        "inference_per_sec": 0,
+        "inferences_per_sec": 0,
         "inference_time": 0,
         "weights_size": 0,
         "arena_cache_size": 0,
@@ -279,7 +279,7 @@ def sr100_check_model(results_dict):
     inference_time = float(results_dict["inference_time"])
 
     perf_data["cycles_npu"] = cycles_npu
-    perf_data["inference_per_sec"] = inferences_per_sec
+    perf_data["inferences_per_sec"] = inferences_per_sec
     perf_data["inference_time"] = inference_time
 
     perf_data["weights_size"] = int(
