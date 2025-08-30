@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Testing different builds of models"""
-from pathlib import Path
+"""Testing different optimizers of models"""
 import pytest
 from sr100_model_compiler import sr100_model_optimizer
 
