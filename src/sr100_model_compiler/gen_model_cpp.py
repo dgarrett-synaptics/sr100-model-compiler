@@ -10,14 +10,18 @@ loc_choices = {
     "flash": "MODEL_TFLITE_ATTRIBUTE_FLASH",  # QSPI FLASH
 }
 
-import datetime
-from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
-
 
 def generate_model_cpp(
-    tflite_path, output_dir, namespace, tflite_loc, env, license_header
+    tflite_path,
+    output_dir,
+    model_file,
+    tflite_loc,
+    arena_cache_size,
+    namespace,
+    env,
+    license_header,
 ):
+    """Generates a C++ source file that contains the TFLite model as a byte array."""
 
     tflite_loc_choice = loc_choices.get(tflite_loc, "MODEL_TFLITE_ATTRIBUTE")
 
@@ -27,10 +31,10 @@ def generate_model_cpp(
 
     # Resolve relative paths for output_dir and cpp_filename
     output_dir = Path(output_dir).resolve()
-    cpp_filename = (output_dir / (namespace + ".cc")).resolve()
+    cpp_filename = (output_dir / (model_file + ".cc")).resolve()
     if platform.system() == "Windows":
         print(
-            f"++ Converting {Path(tflite_path).name} to {output_dir}\{cpp_filename.name}"
+            f"++ Converting {Path(tflite_path).name} to {output_dir}\\{cpp_filename.name}"
         )
     else:
         print(
@@ -42,6 +46,7 @@ def generate_model_cpp(
     model_data, model_length = get_tflite_data(tflite_path)
     env.get_template("tflite.cc.template").stream(
         common_template_header=license_header,
+        arena_cache_size=arena_cache_size,
         tflite_loc=tflite_loc,
         model_data=model_data,
         model_length=model_length,

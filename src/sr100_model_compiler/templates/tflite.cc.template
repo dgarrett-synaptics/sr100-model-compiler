@@ -10,13 +10,16 @@
 #include "{{header}}"
 {% endfor %}
 
-{% if tflite_loc == "sram" %}
 namespace {{namespace}} {
 
+// Setup arena cache size
+static const uint8_t ARENA_CACHE_SIZE = {{arena_cache_size}};
+{% if tflite_loc == "sram" %}
 {% for expression in expressions %}
 {{expression}};
 {% endfor %}
 
+// Define the model binary 
 #if defined(__ARMCC_VERSION)
 static const uint8_t {{tflite_attribute}} nn_model[{{model_length}}] =
 #else
@@ -35,6 +38,6 @@ size_t get_model_len(void)
 {
     return sizeof(nn_model);
 }
+{% endif %}
 
 } /* namespace {{namespace}} */
-{% endif %}
