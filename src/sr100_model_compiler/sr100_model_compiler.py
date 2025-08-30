@@ -269,6 +269,7 @@ def sr100_check_model(results_dict):
         "vmem_size_limit": results_dict["vmem_size_limit"],
         "lpmem_size_limit": results_dict["lpmem_size_limit"],
         "model_loc": results_dict["model_loc"],
+        "system_config": results_dict["system_config"],
         "vela_log": results_dict["vela_log"],
     }
 
