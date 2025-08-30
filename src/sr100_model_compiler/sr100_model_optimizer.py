@@ -29,9 +29,9 @@ def model_optimizer_search(args):
         total_size = cache_size + weights_size
 
         # Determine the system configuration
-        if total_size <= args.vmem_size:
+        if total_size <= args.vmem_size_limit:
             system_config = "sr100_npu_400MHz_all_vmem"
-        elif total_size <= (args.vmem_size + args.lpmem_size):
+        elif total_size <= (args.vmem_size_limit + args.lpmem_size_limit):
             system_config = "sr100_npu_400MHz_tensor_vmem_weights_lpmem"
         else:
             system_config = "sr100_npu_400MHz_tensor_vmem_weights_flash66MHz"
@@ -42,6 +42,8 @@ def model_optimizer_search(args):
             arena_cache_size=cache_size,
             system_config=system_config,
             output_dir=output_dir,
+            vmem_size_limit=args.vmem_size_limit,
+            lpmem_size_limit=args.lpmem_size_limit,
         )
 
     # Checks the SR100 mapping
@@ -70,10 +72,10 @@ def get_optimizer_argparser():
         "-m", "--model-file", type=str, help="Path to TFLite model file", required=True
     )
     parser.add_argument(
-        "--vmem-size", type=int, default=1536000, help="Set vmem size limit"
+        "--vmem-size-limit", type=int, default=1536000, help="Set vmem size limit"
     )
     parser.add_argument(
-        "--lpmem-size", type=int, default=1536000, help="Set lpmem size limit"
+        "--lpmem-size-limit", type=int, default=1536000, help="Set lpmem size limit"
     )
     return parser
 
