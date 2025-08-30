@@ -2,19 +2,11 @@
 
 import argparse
 import tempfile
-from .sr100_model_compiler import sr100_model_compiler, sr100_check_model
-
-
-def get_argparse_defaults(parser: argparse.ArgumentParser) -> dict:
-    """
-    Return a dictionary of all argparse defaults for the given parser.
-    """
-    return {
-        action.dest: action.default
-        for action in parser._actions  # pylint: disable=W0212
-        if action.dest != "help"
-    }
-
+from .sr100_model_compiler import (
+    sr100_model_compiler,
+    sr100_check_model,
+    get_args_from_call,
+)
 
 def model_optimizer_search(args):
     """Searches for the model that fits"""
@@ -61,23 +53,17 @@ def sr100_model_optimizer(**kwargs):
     """Python entry functions for the call"""
 
     # Get default args
-    parser = get_argparser()
-    arg_defaults = get_argparse_defaults(parser)
-
-    # Update inputs with defaults
-    for key in arg_defaults.keys():
-        if key not in kwargs:
-            kwargs[key] = arg_defaults[key]
-
-    args = argparse.Namespace(**kwargs)
+    parser = get_optimizer_argparser()
+    args = get_args_from_call(parser, **kwargs)
+    print(args)
     return model_optimizer_search(args)
 
 
-def get_argparser():
+def get_optimizer_argparser():
     """Parse command line arguments"""
 
     parser = argparse.ArgumentParser(
-        description="Wrapper script to compile a TFLite model onto SR100 devices."
+        description="Optimize memory location for a TFLite model for an SR100 devices."
     )
     parser.add_argument(
         "-m", "--model-file", type=str, help="Path to TFLite model file", required=True

@@ -242,24 +242,13 @@ def get_vela_summary(summary_file):
     return data
 
 
-# def sr100_default_config():
-#    """Gets the SR100 default config"""
-#    # default_config = {"vmem_size_limit": 1536000, "lpmem_size_limit" : 1536000,  "core_clock": 400000000}
-#    default_config = {}
-#    default_config["vmem_size_limit"] = 1536000
-#    default_config["lpmem_size_limit"] = 1536000
-#    default_config["core_clock"] = 400000000
-#
-#    return default_config
-
-
 def sr100_check_model(results_dict):
     """Check model on SR100 data file to see if it fits"""
 
     # check for a bad compile
     if results_dict is None:
         return False, None
-    elif results_dict["cycles_npu"] == 0:
+    if results_dict["cycles_npu"] == 0:
         return False, results_dict
 
     # Get the success story
@@ -318,14 +307,74 @@ def sr100_check_model(results_dict):
     return success, perf_data
 
 
+def run_vela(script_dir, args):
+    """Run the vela compiler"""
+
+    arm_config = get_platform_path(f"{script_dir}/config/sr100_system_config.ini")
+    memory_mode = "--memory-mode=memory_sr100"
+
+    # Generate vela optimized model
+    vela_params = [
+        "vela",
+        "--output-dir",
+        args.output_dir,
+        "--accelerator-config=ethos-u55-128",
+        "--optimise=" + args.optimize,
+        f"--config={arm_config}",
+        memory_mode,
+        f"--system-config={args.system_config}",
+    ]
+    if args.arena_cache_size:
+        vela_params.append(f"--arena-cache-size={args.arena_cache_size}")
+    if args.verbose_cycle_estimate:
+        vela_params.append("--verbose-cycle-estimate")
+    if args.verbose_all:
+        vela_params.append("--verbose-all")
+    vela_params.append(args.model_file)
+
+    print("************ VELA ************")
+    vela_log = ""
+    try:
+        vela_result = subprocess.run(vela_params, capture_output=True, check=True)
+        vela_log += vela_result.stdout.decode("utf-8")
+        vela_log += "\n"
+        vela_log += vela_result.stderr.decode("utf-8")
+
+        # Grab the summary file
+        model_name = args.model_file.split("/")[-1].replace(".tflite", "")
+        summary_file = (
+            f"{args.output_dir}/{model_name}_summary_{args.system_config}.csv"
+        )
+        results = get_vela_summary(summary_file)
+        results["vmem_size_limit"] = args.vmem_size_limit
+        results["lpmem_size_limit"] = args.lpmem_size_limit
+
+    except subprocess.CalledProcessError as e:
+        print("Compilation failed:")
+        results = {"cycles_npu": 0}
+        vela_log += e.stdout.decode("utf-8")
+        vela_log += "\n"
+        vela_log += e.stderr.decode("utf-8")
+
+    # print the log
+    results["vela_log"] = vela_log
+    print(vela_log)
+
+    # Store the logs as well
+    with open(f"{args.output_dir}/{model_name}_vela.log", "w", encoding="utf-8") as fp:
+        fp.write(vela_log)
+    print("********* END OF VELA *********")
+
+    return results
+
+
 def compiler_main(args):  # pylint: disable=R0914
     """Main function with input args"""
 
     results = None
 
     synai_ethosu_op_found = 0
-    memory_mode = "--memory-mode=memory_sr100"
-    args, scripts_to_run, new_model_file, model_name, model_loc = setup_input(args)
+    args, scripts_to_run, new_model_file, _, model_loc = setup_input(args)
 
     # Get the path to the directory containing this script
     script_dir = Path(__file__).parent
@@ -350,64 +399,8 @@ def compiler_main(args):  # pylint: disable=R0914
     )
 
     if args.compiler == "vela":
-
-        arm_config = get_platform_path(f"{script_dir}/config/sr100_system_config.ini")
-
-        # Generate vela optimized model
-        vela_params = [
-            "vela",
-            "--output-dir",
-            args.output_dir,
-            "--accelerator-config=ethos-u55-128",
-            "--optimise=" + args.optimize,
-            f"--config={arm_config}",
-            memory_mode,
-            f"--system-config={args.system_config}",
-        ]
-        if args.arena_cache_size:
-            vela_params.append(f"--arena-cache-size={args.arena_cache_size}")
-        if args.verbose_cycle_estimate:
-            vela_params.append("--verbose-cycle-estimate")
-        if args.verbose_all:
-            vela_params.append("--verbose-all")
-        vela_params.append(args.model_file)
-
-        print("************ VELA ************")
-        vela_log = ""
-        try:
-            vela_result = subprocess.run(vela_params, capture_output=True, check=True)
-            vela_log += vela_result.stdout.decode("utf-8")
-            vela_log += "\n"
-            vela_log += vela_result.stderr.decode("utf-8")
-
-            # Grab the summary file
-            model_name = args.model_file.split("/")[-1].replace(".tflite", "")
-            summary_file = (
-                f"{args.output_dir}/{model_name}_summary_{args.system_config}.csv"
-            )
-            results = get_vela_summary(summary_file)
-            results["vmem_size_limit"] = args.vmem_size_limit
-            results["lpmem_size_limit"] = args.lpmem_size_limit
-            results["model_loc"] = model_loc
-
-        except subprocess.CalledProcessError as e:
-            print("Compilation failed:")
-            results["cycles_npu"] = 0
-            vela_log += e.stdout.decode("utf-8")
-            vela_log += "\n"
-            vela_log += e.stderr.decode("utf-8")
-
-        # print the log
-        results["vela_log"] = vela_log
-        print(vela_log)
-
-        # Store the logs as well
-        with open(
-            f"{args.output_dir}/{model_name}_vela.log", "w", encoding="utf-8"
-        ) as fp:
-            fp.write(vela_log)
-        print("********* END OF VELA *********")
-
+        results = run_vela(script_dir, args)
+        results["model_loc"] = model_loc
     elif args.compiler == "synai":
         # Generate synai optimized model
         print("*********** SYNAI **********")
@@ -445,12 +438,10 @@ def get_argparse_defaults(parser: argparse.ArgumentParser) -> dict:
         if action.dest != "help"
     }
 
-
-def sr100_model_compiler(**kwargs):
-    """Python entry functions for the call"""
+def get_args_from_call(parser, **kwargs):
+    """get kwargs and merges with default args"""
 
     # Get default args
-    parser = get_argparser()
     arg_defaults = get_argparse_defaults(parser)
 
     # Update inputs with defaults
@@ -459,10 +450,27 @@ def sr100_model_compiler(**kwargs):
             kwargs[key] = arg_defaults[key]
 
     args = argparse.Namespace(**kwargs)
+    return args
+
+
+def sr100_model_compiler(**kwargs):
+    """Python entry functions for the call"""
+
+    # Get default args
+    parser = get_compiler_argparser()
+    args = get_args_from_call(parser=parser, **kwargs)
+    # parser = get_argparser()
+    # arg_defaults = get_argparse_defaults(parser)
+
+    # Update inputs with defaults
+    # for key in arg_defaults.keys():
+    #    if key not in kwargs:
+    #        kwargs[key] = arg_defaults[key]
+    # args = argparse.Namespace(**kwargs)
     return compiler_main(args)
 
 
-def get_argparser():
+def get_compiler_argparser():
     """Parse command line arguments"""
 
     parser = argparse.ArgumentParser(
@@ -567,7 +575,7 @@ def get_argparser():
 
 def main():
     """Main for the command line compiler"""
-    parser = get_argparser()
+    parser = get_compiler_argparser()
     args = parser.parse_args()
 
     # Runs the vela compiler
