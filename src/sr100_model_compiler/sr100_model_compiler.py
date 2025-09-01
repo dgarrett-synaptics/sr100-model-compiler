@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import subprocess
+import tempfile
 from pathlib import Path
 import datetime
 import glob
@@ -372,8 +373,13 @@ def run_vela(script_dir, args):
 def compiler_main(args):  # pylint: disable=R0914
     """Main function with input args"""
 
-    results = None
+    # Creating a temporary directory if output dir is not provided
+    tmp_dir = None
+    if args.output_dir is None:
+        tmp_dir = tempfile.TemporaryDirectory() # pylint: disable=R1732
+        args.output_dir = tmp_dir.name
 
+    results = None
     synai_ethosu_op_found = 0
     args, scripts_to_run, new_model_file, _, model_loc = setup_input(args)
 
@@ -425,6 +431,10 @@ def compiler_main(args):  # pylint: disable=R0914
                 )
             elif script == "inout":
                 gen_inout_script(synai_ethosu_op_found, args, license_header)
+
+    # Cleaning up the temporary directory if it was created
+    if tmp_dir:
+        tmp_dir.cleanup()
 
     return results
 
@@ -510,7 +520,6 @@ def get_compiler_argparser():
         "--output-dir",
         type=str,
         help="Directory to output generated files",
-        default=".",
     )
     parser.add_argument(
         "--model-namespace",
