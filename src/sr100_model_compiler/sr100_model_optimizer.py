@@ -40,7 +40,7 @@ def model_optimizer_search(args):
             cache_size_increase = args.vmem_size_limit - cache_size
 
         # Increase performance to vmem max
-        if args.optimize == 'Performance':
+        if args.optimize == "Performance":
             cache_size += cache_size_increase
 
         # Run the final results
@@ -51,7 +51,7 @@ def model_optimizer_search(args):
             output_dir=output_dir,
             vmem_size_limit=args.vmem_size_limit,
             lpmem_size_limit=args.lpmem_size_limit,
-            optimize=args.optimize
+            optimize=args.optimize,
         )
 
     # Checks the SR100 mapping
