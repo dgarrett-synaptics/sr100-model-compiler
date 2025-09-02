@@ -376,7 +376,7 @@ def compiler_main(args):  # pylint: disable=R0914
     # Creating a temporary directory if output dir is not provided
     tmp_dir = None
     if args.output_dir is None:
-        tmp_dir = tempfile.TemporaryDirectory() # pylint: disable=R1732
+        tmp_dir = tempfile.TemporaryDirectory()  # pylint: disable=R1732
         args.output_dir = tmp_dir.name
 
     results = None

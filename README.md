@@ -4,11 +4,13 @@ Builds tooling to take a LiteRT model and target the SRSDK for the SR100 series 
 ## Links to the Vela compiler
 https://review.mlplatform.org/plugins/gitiles/ml/ethos-u/ethos-u-vela
 
-## Get the initial REPO
-Get the repo and requirements
 
-```
-```
+Compiler options:
+https://gitlab.arm.com/artificial-intelligence/ethos-u/ethos-u-vela/-/blob/4.2.0/OPTIONS.md?ref_type=tags#configuration-file
+
+## Get the initial REPO
+
+Get the repo and requirements
 
 ## Development flow
 
