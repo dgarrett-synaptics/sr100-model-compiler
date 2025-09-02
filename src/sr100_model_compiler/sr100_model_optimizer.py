@@ -31,10 +31,17 @@ def model_optimizer_search(args):
         # Determine the system configuration
         if total_size <= args.vmem_size_limit:
             system_config = "sr100_npu_400MHz_all_vmem"
+            cache_size_increase = args.vmem_size_limit - total_size
         elif weights_size <= args.lpmem_size_limit:
             system_config = "sr100_npu_400MHz_tensor_vmem_weights_lpmem"
+            cache_size_increase = args.vmem_size_limit - cache_size
         else:
             system_config = "sr100_npu_400MHz_tensor_vmem_weights_flash66MHz"
+            cache_size_increase = args.vmem_size_limit - cache_size
+
+        # Increase performance to vmem max
+        if args.optimize == "Performance":
+            cache_size += cache_size_increase
 
         # Run the final results
         results = sr100_model_compiler(
@@ -44,6 +51,7 @@ def model_optimizer_search(args):
             output_dir=output_dir,
             vmem_size_limit=args.vmem_size_limit,
             lpmem_size_limit=args.lpmem_size_limit,
+            optimize=args.optimize,
         )
 
     # Checks the SR100 mapping
@@ -76,6 +84,14 @@ def get_optimizer_argparser():
     )
     parser.add_argument(
         "--lpmem-size-limit", type=int, default=1536000, help="Set lpmem size limit"
+    )
+    parser.add_argument(
+        "-p",
+        "--optimize",
+        type=str,
+        default="Size",
+        choices=["Performance", "Size"],
+        help="Choose optimization Type",
     )
     return parser
 

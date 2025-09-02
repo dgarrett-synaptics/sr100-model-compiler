@@ -4,11 +4,13 @@ Builds tooling to take a LiteRT model and target the SRSDK for the SR100 series 
 ## Links to the Vela compiler
 https://review.mlplatform.org/plugins/gitiles/ml/ethos-u/ethos-u-vela
 
-## Get the initial REPO
-Get the repo and requirements
 
-```
-```
+Compiler options:
+https://gitlab.arm.com/artificial-intelligence/ethos-u/ethos-u-vela/-/blob/4.2.0/OPTIONS.md?ref_type=tags#configuration-file
+
+## Get the initial REPO
+
+Get the repo and requirements
 
 ## Development flow
 
@@ -35,8 +37,12 @@ make format
 ### Running the command line compiler
 
 ```bash
-usage: sr100_model_compiler [-h] -m MODEL_FILE [-o OUTPUT_DIR] [-n NAMESPACE] [-s {model,inout} [{model,inout} ...]] [-i INPUT [INPUT ...]] [-c {vela,synai,none}]
-                            [-ml {sram,flash}] [-ac ARENA_CACHE_SIZE] [-v] [-vc] [-p {Performance,Size}]
+usage: sr100_model_compiler [-h] -m MODEL_FILE
+                            [--system-config {sr100_npu_400MHz_all_vmem,sr100_npu_400MHz_tensor_vmem_weights_lpmem,sr100_npu_400MHz_tensor_vmem_weights_flash66MHz,sr100_npu_400MHz_tensor_vmem_weights_flash100MHz}]
+                            [--vmem-size-limit VMEM_SIZE_LIMIT] [--lpmem-size-limit LPMEM_SIZE_LIMIT] [-o OUTPUT_DIR]
+                            [--model-namespace MODEL_NAMESPACE] [-n MODEL_FILE_OUT] [-s {model,inout} [{model,inout} ...]]
+                            [-i INPUT [INPUT ...]] [-c {vela,synai,none}] [--arena-cache-size ARENA_CACHE_SIZE] [-v]
+                            [--verbose-cycle-estimate] [-p {Performance,Size}]
 
 Wrapper script to compile a TFLite model onto SR100 devices.
 
@@ -44,23 +50,49 @@ options:
   -h, --help            show this help message and exit
   -m MODEL_FILE, --model-file MODEL_FILE
                         Path to TFLite model file
+  --system-config {sr100_npu_400MHz_all_vmem,sr100_npu_400MHz_tensor_vmem_weights_lpmem,sr100_npu_400MHz_tensor_vmem_weights_flash66MHz,sr100_npu_400MHz_tensor_vmem_weights_flash100MHz}
+                        Sets system config selection
+  --vmem-size-limit VMEM_SIZE_LIMIT
+                        Sets limit for vmem
+  --lpmem-size-limit LPMEM_SIZE_LIMIT
+                        Sets limit for lpmem (operates at 1/4 speed of vmem)
   -o OUTPUT_DIR, --output-dir OUTPUT_DIR
                         Directory to output generated files
-  -n NAMESPACE, --namespace NAMESPACE
-                        Namespace to use for generated code
+  --model-namespace MODEL_NAMESPACE
+                        Sets the model namespace
+  -n MODEL_FILE_OUT, --model-file-out MODEL_FILE_OUT
+                        Name of the output cc file for the model
   -s {model,inout} [{model,inout} ...], --script {model,inout} [{model,inout} ...]
                         Choose specific scripts to run, if not provided then run all scripts
   -i INPUT [INPUT ...], --input INPUT [INPUT ...]
                         List of input npy/bin files
   -c {vela,synai,none}, --compiler {vela,synai,none}
                         Choose target compiler
-  -ml {sram,flash}, --model-loc {sram,flash}
-                        Choose between in-memory SRAM or the model that is loaded from FLASH
-  -ac ARENA_CACHE_SIZE, --arena-cache-size ARENA_CACHE_SIZE
+  --arena-cache-size ARENA_CACHE_SIZE
                         Sets the model arena cache size in bytes
   -v, --verbose-all     Turns on verbose all for the compiler
-  -vc, --verbose-cycle-estimate
+  --verbose-cycle-estimate
                         Turns on verbose cycle estimation
+  -p {Performance,Size}, --optimize {Performance,Size}
+                        Choose optimization Type
+```
+
+### Running the command line optimizer
+
+```bash
+usage: sr100_model_optimizer [-h] -m MODEL_FILE [--vmem-size-limit VMEM_SIZE_LIMIT] [--lpmem-size-limit LPMEM_SIZE_LIMIT]
+                             [-p {Performance,Size}]
+
+Optimize memory location for a TFLite model for an SR100 devices.
+
+options:
+  -h, --help            show this help message and exit
+  -m MODEL_FILE, --model-file MODEL_FILE
+                        Path to TFLite model file
+  --vmem-size-limit VMEM_SIZE_LIMIT
+                        Set vmem size limit
+  --lpmem-size-limit LPMEM_SIZE_LIMIT
+                        Set lpmem size limit
   -p {Performance,Size}, --optimize {Performance,Size}
                         Choose optimization Type
 ```
